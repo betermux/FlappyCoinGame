@@ -1,7 +1,6 @@
 function startGame() {
     console.log("Game started!");
-    window.Telegram.WebApp.showAlert("Тоглоом эхэллээ!"); // Telegram alert
-    // Тоглоомын логик эндээс эхэлнэ
+    window.Telegram.WebApp.showAlert("Тоглоом эхэллээ!");
 }
 
 function openSkins() {
@@ -27,3 +26,6 @@ function openUpgrade() {
     console.log("Upgrade menu opened!");
     window.Telegram.WebApp.showAlert("Шинэчлэл удахгүй нэмэгдэнэ!");
 }
+
+// Telegram WebApp-ын товчлууруудыг тохируулах
+window.Telegram.WebApp.MainButton.setText("Тоглоом эхлүүлэх").show().onClick(startGame);
