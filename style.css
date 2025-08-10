@@ -1,27 +1,35 @@
-
 body {
     margin: 0;
+    padding: 0;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     background-color: #87CEEB;
+    overflow: hidden; /* Дэлгэцээс халихаас сэргийлнэ */
+}
+
+#gameCanvas {
+    width: 100%;
+    max-width: 400px; /* Мобайл дэлгэцэд тохируулсан */
+    height: 100vh;
+    max-height: 600px;
+    display: block;
 }
 
 .menu {
     display: flex;
     justify-content: space-around;
-    position: absolute;
+    position: fixed;
     bottom: 10px;
     width: 100%;
+    max-width: 400px;
+    z-index: 10; /* Canvas-ын дээр харагдана */
 }
 
 .menu img {
-    width: 60px;
-    height: 60px;
+    width: 50px; /* Мобайл дээр жижиг товчлуур */
+    height: 50px;
     cursor: pointer;
-}
-
-#gameCanvas {
-    border: 1px solid black;
+    touch-action: manipulation; /* Мэдрэгчтэй удирдлагыг сайжруулна */
 }
