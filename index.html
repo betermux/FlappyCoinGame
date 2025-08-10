@@ -1,1 +1,21 @@
-
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Coin Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="menu">
+        <img src="assets/play.png" alt="Play" onclick="startGame()">
+        <img src="assets/skins.png" alt="Skins" onclick="openSkins()">
+        <img src="assets/leaderboard.png" alt="Leaderboard" onclick="showLeaderboard()">
+        <img src="assets/shop.png" alt="Shop" onclick="openShop()">
+        <img src="assets/upgrade.png" alt="Upgrade" onclick="openUpgrade()">
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script src="game.js"></script>
+    <script src="menu.js"></script>
+</body>
+</html>
