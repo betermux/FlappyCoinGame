@@ -1,58 +1,25 @@
-<!doctype html>
-<html lang="mn">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-  <title>FlappyCoin - Hot Balloon Style</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bird Up Game</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
-    <!-- Top bar (score etc.) -->
-    <header id="topbar">
-      <div id="score">Score: <span id="scoreValue">0</span></div>
-      <div id="best">Best: <span id="bestValue">0</span></div>
-    </header>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
 
-    <!-- Main game area -->
-    <main id="gameArea">
-      <canvas id="gameCanvas" width="720" height="1280" aria-label="Game canvas"></canvas>
-
-      <!-- Player skin preview centered above canvas (shows the current skin) -->
-      <div id="playerPreview" aria-hidden="true">
-        <img id="playerImg" src="assets/bird.png" alt="Player skin" />
-      </div>
-
-      <!-- Overlay for paused / game over -->
-      <div id="overlay" class="hidden">
-        <div id="overlayContent">
-          <h2 id="overlayTitle">Paused</h2>
-          <button id="resumeBtn">Resume</button>
-          <button id="restartBtn">Restart</button>
-        </div>
-      </div>
-    </main>
-
-    <!-- Bottom menu: 5 buttons -->
-    <nav id="bottomMenu" role="navigation" aria-label="Game menu">
-      <button class="menuBtn" id="playBtn"><img src="assets/play.png" alt="" /> Play</button>
-      <button class="menuBtn" id="shopBtn"><img src="assets/shop.png" alt="" /> Shop</button>
-      <button class="menuBtn" id="skinsBtn"><img src="assets/skins.png" alt="" /> Skins</button>
-      <button class="menuBtn" id="upgradeBtn"><img src="assets/upgrade.png" alt="" /> Upgrade</button>
-      <button class="menuBtn" id="leaderBtn"><img src="assets/leaderboard.png" alt="" /> Leader</button>
-    </nav>
-
-    <!-- Skins drawer (hidden until open) -->
-    <aside id="skinsPanel" class="hidden">
-      <h3>Choose Skin</h3>
-      <div id="skinsList">
-        <!-- JS fills skins here -->
-      </div>
-      <button id="closeSkins">Close</button>
-    </aside>
+    <!-- Доод меню -->
+    <div id="menu-bar">
+      <button>Home</button>
+      <button>Shop</button>
+      <button id="playBtn">Play</button>
+      <button>Settings</button>
+      <button>Profile</button>
+    </div>
   </div>
 
-  <script src="menu.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
