@@ -1,32 +1,56 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-let obstacles = [];
 let gameRunning = false;
+let obstacles = [];
+let obstacleTimer = 0;
+let bird = {
+  width: 50,
+  height: 50,
+  x: window.innerWidth / 2 - 25,
+  y: window.innerHeight - 150,
+  speed: 7
+};
 
+// Саад үүсгэх функц
 function spawnObstacle() {
-  const x = Math.random() * (canvas.width - 50);
-  obstacles.push({ x: x, y: -50, size: 50 });
+  let size = 40;
+  let x = Math.random() * (canvas.width - size);
+  obstacles.push({ x, y: -size, size, speed: 4 });
 }
 
+// Саад зурах
 function drawObstacles() {
-  ctx.fillStyle = "red";
+  ctx.fillStyle = 'red';
   obstacles.forEach(o => {
     ctx.fillRect(o.x, o.y, o.size, o.size);
   });
 }
 
+// Саад хөдөлгөх
 function updateObstacles() {
-  obstacles.forEach(o => o.y += 5);
+  obstacles.forEach(o => {
+    o.y += o.speed;
+  });
   obstacles = obstacles.filter(o => o.y < canvas.height + 50);
 }
 
+// Тоглоомын үндсэн цикл
 function gameLoop() {
   if (!gameRunning) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Шувуу зурах
+  ctx.fillStyle = 'yellow';
+  ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
 
   updateObstacles();
   drawObstacles();
@@ -34,12 +58,30 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-document.getElementById("btn3").addEventListener("click", () => {
-  document.getElementById("menu").style.display = "none";
-  document.getElementById("bigBird").style.display = "none";
-  canvas.style.display = "block";
-  gameRunning = true;
-
-  setInterval(spawnObstacle, 1000);
-  gameLoop();
+// Гар хөдөлгөөн
+window.addEventListener('touchstart', (e) => {
+  if (!gameRunning) return;
+  let touchX = e.touches[0].clientX;
+  if (touchX < canvas.width / 2) {
+    bird.x -= bird.speed;
+  } else {
+    bird.x += bird.speed;
+  }
+  // Хязгаарлалтыг хийх
+  if (bird.x < 0) bird.x = 0;
+  if (bird.x + bird.width > canvas.width) bird.x = canvas.width - bird.width;
 });
+
+// Тоглоом эхлүүлэх функц
+function startGame() {
+  obstacles = [];
+  bird.x = canvas.width / 2 - bird.width / 2;
+  bird.y = canvas.height - bird.height - 50;
+  gameRunning = true;
+  spawnObstacle();
+  obstacleTimer = 0;
+  canvas.style.display = 'block';
+  requestAnimationFrame(gameLoop);
+  // Саад үүсгэх давтамж
+  setInterval(spawnObstacle, 1500);
+}
