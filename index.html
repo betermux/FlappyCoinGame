@@ -4,126 +4,27 @@
   <meta charset="UTF-8">
   <title>Bird Drop Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      background: #87CEEB;
-      overflow: hidden;
-      touch-action: none;
-      font-family: sans-serif;
-    }
-    #gameCanvas {
-      display: block;
-      margin: 0 auto;
-      background: #cceeff;
-    }
-    /* Menu styles */
-    #menu {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      display: flex;
-      justify-content: space-around;
-      padding: 10px;
-      background: rgba(0,0,0,0.4);
-    }
-    .menu-btn {
-      width: 50px;
-      height: 50px;
-      background-size: cover;
-      background-position: center;
-      border-radius: 8px;
-    }
-    #bigBird {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 200px;
-      height: auto;
-      z-index: -1;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="gameCanvas" width="360" height="640"></canvas>
 
-  <!-- Bird in center -->
-  <img id="bigBird" src="bird.png" alt="Bird">
+  <!-- Гол тоглоомын контейнер -->
+  <div id="gameContainer">
+    <!-- Гол bird зураг -->
+    <img id="bigBird" src="bird.png" alt="Bird">
 
-  <!-- Bottom Menu -->
-  <div id="menu">
-    <div class="menu-btn" id="playBtn" style="background-image:url('play.png');"></div>
-    <div class="menu-btn" style="background-image:url('settings.png');"></div>
-    <div class="menu-btn" style="background-image:url('shop.png');"></div>
-    <div class="menu-btn" style="background-image:url('score.png');"></div>
-    <div class="menu-btn" style="background-image:url('exit.png');"></div>
+    <!-- Доод цэс -->
+    <div id="menu">
+      <button class="menu-btn" id="btn1"><img src="icon1.png" alt="Btn1"></button>
+      <button class="menu-btn" id="btn2"><img src="icon2.png" alt="Btn2"></button>
+      <button class="menu-btn" id="btn3" id="playBtn"><img src="play.png" alt="Play"></button>
+      <button class="menu-btn" id="btn4"><img src="icon4.png" alt="Btn4"></button>
+      <button class="menu-btn" id="btn5"><img src="icon5.png" alt="Btn5"></button>
+    </div>
   </div>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+  <canvas id="gameCanvas"></canvas>
 
-    let gameRunning = false;
-    let bird = { x: 160, y: 500, size: 30, img: new Image() };
-    bird.img.src = "bird.png";
-
-    let obstacles = [];
-    let obstacleTimer = 0;
-
-    document.getElementById("playBtn").addEventListener("click", () => {
-      document.getElementById("menu").style.display = "none";
-      document.getElementById("bigBird").style.display = "none";
-      startGame();
-    });
-
-    function startGame() {
-      gameRunning = true;
-      bird.x = canvas.width / 2 - bird.size / 2;
-      bird.y = canvas.height - bird.size - 20;
-      obstacles = [];
-      obstacleTimer = 0;
-      requestAnimationFrame(update);
-    }
-
-    function spawnObstacle() {
-      let o = {
-        x: Math.random() * (canvas.width - 30),
-        y: -30,
-        size: 30
-      };
-      obstacles.push(o);
-    }
-
-    function update() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (gameRunning) {
-        // Draw bird
-        ctx.drawImage(bird.img, bird.x, bird.y, bird.size, bird.size);
-
-        // Spawn obstacles
-        obstacleTimer++;
-        if (obstacleTimer > 60) {
-          spawnObstacle();
-          obstacleTimer = 0;
-        }
-
-        // Move obstacles
-        for (let i = 0; i < obstacles.length; i++) {
-          obstacles[i].y += 3;
-          ctx.fillStyle = "red";
-          ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].size, obstacles[i].size);
-        }
-
-        // Remove off-screen
-        obstacles = obstacles.filter(o => o.y < canvas.height);
-      }
-
-      requestAnimationFrame(update);
-    }
-
-    update();
-  </script>
+  <script src="game.js"></script>
 </body>
 </html>
