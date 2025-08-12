@@ -1,39 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>FlappyCoinGame</title>
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Puujin — Telegram WebApp</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Phaser 3 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <script src="telegram.js" defer></script>
+  <script src="game.js" defer></script>
 </head>
 <body>
-  <div id="gameContainer">
-    <!-- Том bird голд харагдана -->
-    <img id="bigBird" src="assets/bird.png" alt="Bird" />
-
-    <!-- Доод меню -->
-    <nav id="menuBar">
-      <button class="menu-btn" id="skinsBtn">
-        <img src="assets/skins.png" alt="Skins" />
-      </button>
-      <button class="menu-btn" id="shopBtn">
-        <img src="assets/shop.png" alt="Shop" />
-      </button>
-      <button class="menu-btn" id="playBtn">
-        <img src="assets/play.png" alt="Play" />
-      </button>
-      <button class="menu-btn" id="upgradeBtn">
-        <img src="assets/upgrade.png" alt="Upgrade" />
-      </button>
-      <button class="menu-btn" id="leaderboardBtn">
-        <img src="assets/leaderboard.png" alt="Leaderboard" />
-      </button>
-    </nav>
+  <div id="app">
+    <!-- Telegram WebApp will embed this page -->
+    <div id="hud">
+      <div id="score">Score: 0</div>
+      <button id="btn-share" class="small">Share</button>
+      <button id="btn-pause" class="small">Pause</button>
+    </div>
+    <div id="game-container"></div>
   </div>
-
-  <canvas id="gameCanvas"></canvas>
-
-  <script src="game.js"></script>
-  <script src="menu.js"></script>
 </body>
 </html>
