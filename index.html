@@ -1,24 +1,134 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="mn">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Puujin — Telegram WebApp</title>
-  <link rel="stylesheet" href="styles.css" />
-  <!-- Phaser 3 CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-  <script src="telegram.js" defer></script>
-  <script src="game.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Dodging Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #fff;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+        }
+    </style>
 </head>
 <body>
-  <div id="app">
-    <!-- Telegram WebApp will embed this page -->
-    <div id="hud">
-      <div id="score">Score: 0</div>
-      <button id="btn-share" class="small">Share</button>
-      <button id="btn-pause" class="small">Pause</button>
-    </div>
-    <div id="game-container"></div>
-  </div>
+    <div id="score">Оноо: 0</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+
+        let score = 0;
+        let gameOver = false;
+
+        // Сансрын хөлөг (rocket)
+        const rocket = {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 40,
+            height: 40,
+            speed: 5
+        };
+
+        // Саад бэрхшээл (obstacles)
+        let obstacles = [];
+        const obstacleSpeed = 3;
+        const obstacleFrequency = 50;
+        let frameCount = 0;
+
+        // Удирдлага
+        let keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,
+            ArrowDown: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key in keys) keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key in keys) keys[e.key] = false;
+        });
+
+        function createObstacle() {
+            const size = 30;
+            const x = Math.random() * (canvas.width - size);
+            obstacles.push({ x: x, y: -size, width: size, height: size });
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            // Сансрын хөлгийн хөдөлгөөн
+            if (keys.ArrowLeft && rocket.x > 0) rocket.x -= rocket.speed;
+            if (keys.ArrowRight && rocket.x < canvas.width - rocket.width) rocket.x += rocket.speed;
+            if (keys.ArrowUp && rocket.y > 0) rocket.y -= rocket.speed;
+            if (keys.ArrowDown && rocket.y < canvas.height - rocket.height) rocket.y += rocket.speed;
+
+            // Саад бэрхшээл үүсгэх
+            frameCount++;
+            if (frameCount % obstacleFrequency === 0) {
+                createObstacle();
+                score++;
+                scoreDisplay.textContent = `Оноо: ${score}`;
+            }
+
+            // Саад бэрхшээлийн хөдөлгөөн
+            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
+            obstacles.forEach(obstacle => {
+                obstacle.y += obstacleSpeed;
+
+                // Хүрдэг эсэхийг шалгах
+                if (
+                    rocket.x < obstacle.x + obstacle.width &&
+                    rocket.x + rocket.width > obstacle.x &&
+                    rocket.y < obstacle.y + obstacle.height &&
+                    rocket.y + rocket.height > obstacle.y
+                ) {
+                    gameOver = true;
+                    alert(`Тоглоом дууслаа! Таны оноо: ${score}`);
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Сансрын хөлөг зурах
+            ctx.font = '40px Arial';
+            ctx.fillText('🚀', rocket.x, rocket.y);
+
+            // Саад бэрхшээл зурах
+            obstacles.forEach(obstacle => {
+                ctx.fillText('☄️', obstacle.x, obstacle.y);
+            });
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
 </body>
 </html>
