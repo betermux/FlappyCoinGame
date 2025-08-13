@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rocket Dodging Game - Mobile</title>
+    <title>Rocket Dodging Game - Mobile Touch</title>
     <style>
         body {
             margin: 0;
@@ -15,11 +15,11 @@
             background-color: #1a1a1a;
             font-family: Arial, sans-serif;
             overflow: hidden;
-            touch-action: none; /* Мэдрэгчтэй дэлгэцийн default zoom-г хориглоно */
+            touch-action: none; /* Default zoom-г хориглоно */
         }
         #gameCanvas {
             width: 100vw;
-            height: 70vh;
+            height: 80vh;
             max-width: 600px;
             max-height: 800px;
             border: 2px solid #fff;
@@ -29,39 +29,11 @@
             font-size: 5vw;
             margin: 10px;
         }
-        #controls {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 600px;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        button {
-            padding: 15px;
-            font-size: 4vw;
-            border: none;
-            border-radius: 10px;
-            background-color: #4CAF50;
-            color: white;
-            cursor: pointer;
-            width: 30%;
-            text-align: center;
-        }
-        button:active {
-            background-color: #45a049;
-        }
     </style>
 </head>
 <body>
     <div id="score">Оноо: 0</div>
     <canvas id="gameCanvas"></canvas>
-    <div id="controls">
-        <button id="leftBtn">Зүүн</button>
-        <button id="rightBtn">Баруун</button>
-        <button id="upBtn">Дээш</button>
-        <button id="downBtn">Доош</button>
-    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -69,7 +41,7 @@
 
         // Canvas-ын хэмжээг тохируулах
         canvas.width = Math.min(window.innerWidth, 600);
-        canvas.height = Math.min(window.innerHeight * 0.7, 800);
+        canvas.height = Math.min(window.innerHeight * 0.8, 800);
 
         let score = 0;
         let gameOver = false;
@@ -80,7 +52,7 @@
             y: canvas.height - 50,
             width: 40,
             height: 40,
-            speed: 5
+            speed: 0.15 // Хөдөлгөөний хурдыг хурууны чиглэлд тохируулах
         };
 
         // Саад бэрхшээл
@@ -89,32 +61,34 @@
         const obstacleFrequency = 50;
         let frameCount = 0;
 
-        // Мэдрэгчтэй удирдлага болон товчны удирдлага
-        let moveLeft = false;
-        let moveRight = false;
-        let moveUp = false;
-        let moveDown = false;
+        // Мэдрэгчтэй удирдлагын хувьсагчид
+        let targetX = rocket.x;
+        let targetY = rocket.y;
+        let isTouching = false;
 
-        // Товчны event listeners
-        document.getElementById('leftBtn').addEventListener('touchstart', () => moveLeft = true);
-        document.getElementById('leftBtn').addEventListener('touchend', () => moveLeft = false);
-        document.getElementById('rightBtn').addEventListener('touchstart', () => moveRight = true);
-        document.getElementById('rightBtn').addEventListener('touchend', () => moveRight = false);
-        document.getElementById('upBtn').addEventListener('touchstart', () => moveUp = true);
-        document.getElementById('upBtn').addEventListener('touchend', () => moveUp = false);
-        document.getElementById('downBtn').addEventListener('touchstart', () => moveDown = true);
-        document.getElementById('downBtn').addEventListener('touchend', () => moveDown = false);
+        // Мэдрэгчтэй удирдлага
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isTouching = true;
+            updateTargetPosition(e);
+        });
 
-        // Мэдрэгчтэй хөдөлгөөний удирдлага
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            updateTargetPosition(e);
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isTouching = false;
+        });
+
+        function updateTargetPosition(e) {
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-            const touchY = (touch.clientY - rect.top) * (canvas.height / rect.height);
-            rocket.x = Math.max(0, Math.min(touchX - rocket.width / 2, canvas.width - rocket.width));
-            rocket.y = Math.max(0, Math.min(touchY - rocket.height / 2, canvas.height - rocket.height));
-        });
+            targetX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            targetY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+        }
 
         function createObstacle() {
             const size = 30;
@@ -125,11 +99,17 @@
         function update() {
             if (gameOver) return;
 
-            // Сансрын хөлгийн хөдөлгөөн (товчны удирдлага)
-            if (moveLeft && rocket.x > 0) rocket.x -= rocket.speed;
-            if (moveRight && rocket.x < canvas.width - rocket.width) rocket.x += rocket.speed;
-            if (moveUp && rocket.y > 0) rocket.y -= rocket.speed;
-            if (moveDown && rocket.y < canvas.height - rocket.height) rocket.y += rocket.speed;
+            // Сансрын хөлгийг хурууны чиглэл рүү жигд хөдөлгөх
+            if (isTouching) {
+                const dx = targetX - rocket.x;
+                const dy = targetY - rocket.y;
+                rocket.x += dx * rocket.speed;
+                rocket.y += dy * rocket.speed;
+
+                // Хил хязгаарын хяналт
+                rocket.x = Math.max(0, Math.min(rocket.x, canvas.width - rocket.width));
+                rocket.y = Math.max(0, Math.min(rocket.y, canvas.height - rocket.height));
+            }
 
             // Саад бэрхшээл үүсгэх
             frameCount++;
