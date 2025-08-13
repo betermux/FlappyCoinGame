@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="mn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rocket Dodging Game - Mobile Touch</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rocket Dodging Game - Mobile Touch (Left-Right)</title>
     <style>
         body {
             margin: 0;
@@ -35,9 +35,9 @@
     <div id="score">Оноо: 0</div>
     <canvas id="gameCanvas"></canvas>
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('score');
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreDisplay = document.getElementById("score");
 
         // Canvas-ын хэмжээг тохируулах
         canvas.width = Math.min(window.innerWidth, 600);
@@ -49,10 +49,10 @@
         // Сансрын хөлөг
         const rocket = {
             x: canvas.width / 2,
-            y: canvas.height - 50,
+            y: canvas.height - 50, // Y тэнхлэгт тогтмол байрлал
             width: 40,
             height: 40,
-            speed: 0.15 // Хөдөлгөөний хурдыг хурууны чиглэлд тохируулах
+            speed: 0.15, // Хөдөлгөөний хурд
         };
 
         // Саад бэрхшээл
@@ -63,22 +63,21 @@
 
         // Мэдрэгчтэй удирдлагын хувьсагчид
         let targetX = rocket.x;
-        let targetY = rocket.y;
         let isTouching = false;
 
         // Мэдрэгчтэй удирдлага
-        canvas.addEventListener('touchstart', (e) => {
+        canvas.addEventListener("touchstart", (e) => {
             e.preventDefault();
             isTouching = true;
             updateTargetPosition(e);
         });
 
-        canvas.addEventListener('touchmove', (e) => {
+        canvas.addEventListener("touchmove", (e) => {
             e.preventDefault();
             updateTargetPosition(e);
         });
 
-        canvas.addEventListener('touchend', (e) => {
+        canvas.addEventListener("touchend", (e) => {
             e.preventDefault();
             isTouching = false;
         });
@@ -87,7 +86,6 @@
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
             targetX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-            targetY = (touch.clientY - rect.top) * (canvas.height / rect.height);
         }
 
         function createObstacle() {
@@ -99,16 +97,13 @@
         function update() {
             if (gameOver) return;
 
-            // Сансрын хөлгийг хурууны чиглэл рүү жигд хөдөлгөх
+            // Сансрын хөлгийг зөвхөн баруун-зүүн тийш хөдөлгөх
             if (isTouching) {
                 const dx = targetX - rocket.x;
-                const dy = targetY - rocket.y;
                 rocket.x += dx * rocket.speed;
-                rocket.y += dy * rocket.speed;
 
-                // Хил хязгаарын хяналт
+                // Хил хязгаарын хяналт (зөвхөн x тэнхлэг)
                 rocket.x = Math.max(0, Math.min(rocket.x, canvas.width - rocket.width));
-                rocket.y = Math.max(0, Math.min(rocket.y, canvas.height - rocket.height));
             }
 
             // Саад бэрхшээл үүсгэх
@@ -120,8 +115,8 @@
             }
 
             // Саад бэрхшээлийн хөдөлгөөн
-            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
-            obstacles.forEach(obstacle => {
+            obstacles = obstacles.filter((obstacle) => obstacle.y < canvas.height);
+            obstacles.forEach((obstacle) => {
                 obstacle.y += obstacleSpeed;
 
                 // Хүрдэг эсэхийг шалгах
@@ -142,12 +137,12 @@
 
             // Сансрын хөлөг зурах
             ctx.font = `${rocket.width}px Arial`;
-            ctx.fillText('🚀', rocket.x, rocket.y);
+            ctx.fillText("🚀", rocket.x, rocket.y);
 
             // Саад бэрхшээл зурах
-            obstacles.forEach(obstacle => {
+            obstacles.forEach((obstacle) => {
                 ctx.font = `${obstacle.width}px Arial`;
-                ctx.fillText('☄️', obstacle.x, obstacle.y);
+                ctx.fillText("☄️", obstacle.x, obstacle.y);
             });
         }
 
