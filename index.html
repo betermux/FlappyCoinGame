@@ -2,42 +2,79 @@
 <html lang="mn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rocket Dodging Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rocket Dodging Game - Mobile</title>
     <style>
         body {
+            margin: 0;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
             background-color: #1a1a1a;
             font-family: Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none; /* Мэдрэгчтэй дэлгэцийн default zoom-г хориглоно */
         }
-        canvas {
+        #gameCanvas {
+            width: 100vw;
+            height: 70vh;
+            max-width: 600px;
+            max-height: 800px;
             border: 2px solid #fff;
         }
         #score {
-            position: absolute;
-            top: 20px;
-            left: 20px;
             color: white;
-            font-size: 24px;
+            font-size: 5vw;
+            margin: 10px;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 600px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 15px;
+            font-size: 4vw;
+            border: none;
+            border-radius: 10px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            width: 30%;
+            text-align: center;
+        }
+        button:active {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
     <div id="score">Оноо: 0</div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <button id="leftBtn">Зүүн</button>
+        <button id="rightBtn">Баруун</button>
+        <button id="upBtn">Дээш</button>
+        <button id="downBtn">Доош</button>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreDisplay = document.getElementById('score');
 
+        // Canvas-ын хэмжээг тохируулах
+        canvas.width = Math.min(window.innerWidth, 600);
+        canvas.height = Math.min(window.innerHeight * 0.7, 800);
+
         let score = 0;
         let gameOver = false;
 
-        // Сансрын хөлөг (rocket)
+        // Сансрын хөлөг
         const rocket = {
             x: canvas.width / 2,
             y: canvas.height - 50,
@@ -46,26 +83,37 @@
             speed: 5
         };
 
-        // Саад бэрхшээл (obstacles)
+        // Саад бэрхшээл
         let obstacles = [];
         const obstacleSpeed = 3;
         const obstacleFrequency = 50;
         let frameCount = 0;
 
-        // Удирдлага
-        let keys = {
-            ArrowLeft: false,
-            ArrowRight: false,
-            ArrowUp: false,
-            ArrowDown: false
-        };
+        // Мэдрэгчтэй удирдлага болон товчны удирдлага
+        let moveLeft = false;
+        let moveRight = false;
+        let moveUp = false;
+        let moveDown = false;
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key in keys) keys[e.key] = true;
-        });
+        // Товчны event listeners
+        document.getElementById('leftBtn').addEventListener('touchstart', () => moveLeft = true);
+        document.getElementById('leftBtn').addEventListener('touchend', () => moveLeft = false);
+        document.getElementById('rightBtn').addEventListener('touchstart', () => moveRight = true);
+        document.getElementById('rightBtn').addEventListener('touchend', () => moveRight = false);
+        document.getElementById('upBtn').addEventListener('touchstart', () => moveUp = true);
+        document.getElementById('upBtn').addEventListener('touchend', () => moveUp = false);
+        document.getElementById('downBtn').addEventListener('touchstart', () => moveDown = true);
+        document.getElementById('downBtn').addEventListener('touchend', () => moveDown = false);
 
-        document.addEventListener('keyup', (e) => {
-            if (e.key in keys) keys[e.key] = false;
+        // Мэдрэгчтэй хөдөлгөөний удирдлага
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            const touchY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+            rocket.x = Math.max(0, Math.min(touchX - rocket.width / 2, canvas.width - rocket.width));
+            rocket.y = Math.max(0, Math.min(touchY - rocket.height / 2, canvas.height - rocket.height));
         });
 
         function createObstacle() {
@@ -77,11 +125,11 @@
         function update() {
             if (gameOver) return;
 
-            // Сансрын хөлгийн хөдөлгөөн
-            if (keys.ArrowLeft && rocket.x > 0) rocket.x -= rocket.speed;
-            if (keys.ArrowRight && rocket.x < canvas.width - rocket.width) rocket.x += rocket.speed;
-            if (keys.ArrowUp && rocket.y > 0) rocket.y -= rocket.speed;
-            if (keys.ArrowDown && rocket.y < canvas.height - rocket.height) rocket.y += rocket.speed;
+            // Сансрын хөлгийн хөдөлгөөн (товчны удирдлага)
+            if (moveLeft && rocket.x > 0) rocket.x -= rocket.speed;
+            if (moveRight && rocket.x < canvas.width - rocket.width) rocket.x += rocket.speed;
+            if (moveUp && rocket.y > 0) rocket.y -= rocket.speed;
+            if (moveDown && rocket.y < canvas.height - rocket.height) rocket.y += rocket.speed;
 
             // Саад бэрхшээл үүсгэх
             frameCount++;
@@ -113,11 +161,12 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Сансрын хөлөг зурах
-            ctx.font = '40px Arial';
+            ctx.font = `${rocket.width}px Arial`;
             ctx.fillText('🚀', rocket.x, rocket.y);
 
             // Саад бэрхшээл зурах
             obstacles.forEach(obstacle => {
+                ctx.font = `${obstacle.width}px Arial`;
                 ctx.fillText('☄️', obstacle.x, obstacle.y);
             });
         }
