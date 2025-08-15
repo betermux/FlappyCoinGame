@@ -111,11 +111,21 @@
 
     // Assets
     const rocketImg = new Image();
-    rocketImg.src = "assets/rocket.gif";
+    rocketImg.src = "assets/rocket.png"; // Changed to PNG
     const obstacleImg = new Image();
-    obstacleImg.src = "assets/obstacle.gif";
+    obstacleImg.src = "assets/obstacle.png"; // Changed to PNG
     const coinImg = new Image();
     coinImg.src = "assets/coin.png";
+
+    // Animation properties
+    const rocketFrameCount = 4; // Adjust based on your sprite sheet
+    const obstacleFrameCount = 4; // Adjust based on your sprite sheet
+    const frameWidth = 50; // Width of each frame in the sprite sheet
+    const frameHeight = 50; // Height of each frame in the sprite sheet
+    let rocketFrameIndex = 0;
+    let obstacleFrameIndex = 0;
+    const frameSpeed = 100; // Milliseconds per frame
+    let lastFrameUpdate = 0;
 
     // Preload assets
     let assetsLoaded = 0;
@@ -168,6 +178,7 @@
       coins = [];
       lastObstacleSpawn = performance.now();
       lastCoinSpawn = performance.now();
+      lastFrameUpdate = performance.now();
       requestAnimationFrame(gameLoop);
     }
 
@@ -206,26 +217,45 @@
       }
     }
 
+    function updateAnimations(time) {
+      if (time - lastFrameUpdate > frameSpeed) {
+        rocketFrameIndex = (rocketFrameIndex + 1) % rocketFrameCount;
+        obstacleFrameIndex = (obstacleFrameIndex + 1) % obstacleFrameCount;
+        lastFrameUpdate = time;
+      }
+    }
+
     function gameLoop(time) {
       if (!gameRunning) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Update animations
+      updateAnimations(time);
+
       // Stars background
       updateStars();
       drawStars();
 
-      // Draw rocket
-      ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.width, rocket.height);
+      // Draw rocket with sprite sheet
+      ctx.drawImage(
+        rocketImg,
+        rocketFrameIndex * frameWidth, 0, frameWidth, frameHeight,
+        rocket.x, rocket.y, rocket.width, rocket.height
+      );
 
       // Spawn objects
       spawnObstacle(time);
       spawnCoin(time);
 
-      // Update and draw obstacles
+      // Update and draw obstacles with sprite sheet
       for (let o of obstacles) {
         o.y += 3;
-        ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
+        ctx.drawImage(
+          obstacleImg,
+          obstacleFrameIndex * frameWidth, 0, frameWidth, frameHeight,
+          o.x, o.y, o.width, o.height
+        );
       }
 
       // Update and draw coins
