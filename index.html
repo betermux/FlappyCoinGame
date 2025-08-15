@@ -1,158 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Rocket Dodging Game - Mobile Touch (Left-Right)</title>
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #1a1a1a;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-            touch-action: none; /* Default zoom-г хориглоно */
-        }
-        #gameCanvas {
-            width: 100vw;
-            height: 80vh;
-            max-width: 600px;
-            max-height: 800px;
-            border: 2px solid #fff;
-        }
-        #score {
-            color: white;
-            font-size: 5vw;
-            margin: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rocket Game</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+    }
+    canvas {
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 </head>
 <body>
-    <div id="score">Оноо: 0</div>
-    <canvas id="gameCanvas"></canvas>
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreDisplay = document.getElementById("score");
 
-        // Canvas-ын хэмжээг тохируулах
-        canvas.width = Math.min(window.innerWidth, 600);
-        canvas.height = Math.min(window.innerHeight * 0.8, 800);
+<script>
+class MainScene extends Phaser.Scene {
+    constructor() {
+        super('MainScene');
+    }
 
-        let score = 0;
-        let gameOver = false;
+    preload() {
+        this.load.image('bg', 'assets/bg-earth.png');
+        this.load.image('coin', 'assets/coin.png');
+        this.load.image('rocket', 'assets/rocket.gif');
+        this.load.image('obstacle', 'assets/obstacle.gif');
+    }
 
-        // Сансрын хөлөг
-        const rocket = {
-            x: canvas.width / 2,
-            y: canvas.height - 50, // Y тэнхлэгт тогтмол байрлал
-            width: 40,
-            height: 40,
-            speed: 0.15, // Хөдөлгөөний хурд
-        };
+    create() {
+        this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'bg')
+            .setOrigin(0, 0);
 
-        // Саад бэрхшээл
-        let obstacles = [];
-        const obstacleSpeed = 3;
-        const obstacleFrequency = 50;
-        let frameCount = 0;
+        this.rocket = this.physics.add.sprite(100, this.scale.height / 2, 'rocket');
+        this.rocket.setCollideWorldBounds(true);
 
-        // Мэдрэгчтэй удирдлагын хувьсагчид
-        let targetX = rocket.x;
-        let isTouching = false;
+        this.cursors = this.input.keyboard.createCursorKeys();
 
-        // Мэдрэгчтэй удирдлага
-        canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            isTouching = true;
-            updateTargetPosition(e);
-        });
+        this.coins = this.physics.add.group();
+        this.obstacles = this.physics.add.group();
 
-        canvas.addEventListener("touchmove", (e) => {
-            e.preventDefault();
-            updateTargetPosition(e);
-        });
+        this.score = 0;
+        this.scoreText = this.add.text(10, 10, 'Оноо: 0', { fontSize: '24px', fill: '#fff' });
 
-        canvas.addEventListener("touchend", (e) => {
-            e.preventDefault();
-            isTouching = false;
-        });
+        this.physics.add.overlap(this.rocket, this.coins, this.collectCoin, null, this);
+        this.physics.add.collider(this.rocket, this.obstacles, this.hitObstacle, null, this);
 
-        function updateTargetPosition(e) {
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            targetX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+        this.time.addEvent({ delay: 1500, callback: this.spawnCoin, callbackScope: this, loop: true });
+        this.time.addEvent({ delay: 2000, callback: this.spawnObstacle, callbackScope: this, loop: true });
+    }
+
+    update() {
+        this.bg.tilePositionY -= 2;
+
+        if (this.cursors.up.isDown) {
+            this.rocket.setVelocityY(-200);
+        } else if (this.cursors.down.isDown) {
+            this.rocket.setVelocityY(200);
+        } else {
+            this.rocket.setVelocityY(0);
         }
+    }
 
-        function createObstacle() {
-            const size = 30;
-            const x = Math.random() * (canvas.width - size);
-            obstacles.push({ x: x, y: -size, width: size, height: size });
-        }
+    spawnCoin() {
+        let x = Phaser.Math.Between(200, this.scale.width - 50);
+        let coin = this.coins.create(x, 0, 'coin');
+        coin.setVelocityY(150);
+    }
 
-        function update() {
-            if (gameOver) return;
+    spawnObstacle() {
+        let x = Phaser.Math.Between(200, this.scale.width - 50);
+        let obstacle = this.obstacles.create(x, 0, 'obstacle');
+        obstacle.setVelocityY(200);
+    }
 
-            // Сансрын хөлгийг зөвхөн баруун-зүүн тийш хөдөлгөх
-            if (isTouching) {
-                const dx = targetX - rocket.x;
-                rocket.x += dx * rocket.speed;
+    collectCoin(rocket, coin) {
+        coin.destroy();
+        this.score += 10;
+        this.scoreText.setText('Оноо: ' + this.score);
+    }
 
-                // Хил хязгаарын хяналт (зөвхөн x тэнхлэг)
-                rocket.x = Math.max(0, Math.min(rocket.x, canvas.width - rocket.width));
-            }
+    hitObstacle() {
+        this.scene.restart(); // Текст үзүүлэхгүй шууд тоглоомыг дахин эхлүүлнэ
+    }
+}
 
-            // Саад бэрхшээл үүсгэх
-            frameCount++;
-            if (frameCount % obstacleFrequency === 0) {
-                createObstacle();
-                score++;
-                scoreDisplay.textContent = `Оноо: ${score}`;
-            }
+const config = {
+    type: Phaser.AUTO,
+    width: 480,
+    height: 800,
+    physics: {
+        default: 'arcade',
+        arcade: { debug: false }
+    },
+    scene: [MainScene]
+};
 
-            // Саад бэрхшээлийн хөдөлгөөн
-            obstacles = obstacles.filter((obstacle) => obstacle.y < canvas.height);
-            obstacles.forEach((obstacle) => {
-                obstacle.y += obstacleSpeed;
+new Phaser.Game(config);
+</script>
 
-                // Хүрдэг эсэхийг шалгах
-                if (
-                    rocket.x < obstacle.x + obstacle.width &&
-                    rocket.x + rocket.width > obstacle.x &&
-                    rocket.y < obstacle.y + obstacle.height &&
-                    rocket.y + rocket.height > obstacle.y
-                ) {
-                    gameOver = true;
-                    alert(`Тоглоом дууслаа! Таны оноо: ${score}`);
-                }
-            });
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Сансрын хөлөг зурах
-            ctx.font = `${rocket.width}px Arial`;
-            ctx.fillText("🚀", rocket.x, rocket.y);
-
-            // Саад бэрхшээл зурах
-            obstacles.forEach((obstacle) => {
-                ctx.font = `${obstacle.width}px Arial`;
-                ctx.fillText("☄️", obstacle.x, obstacle.y);
-            });
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        gameLoop();
-    </script>
 </body>
 </html>
