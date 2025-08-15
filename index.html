@@ -50,39 +50,15 @@
     #startBtn:hover {
       background: #ffdd33;
     }
-    #touchControls {
-      position: absolute;
-      bottom: 5vh;
-      width: 100%;
-      display: none;
-      justify-content: space-between;
-      padding: 0 5vw;
-      box-sizing: border-box;
-    }
-    .touchBtn {
-      padding: 3vh 5vw;
-      font-size: 4vw;
-      background: rgba(255, 255, 255, 0.3);
-      border: none;
-      border-radius: 10px;
-      color: white;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
   <div id="homeScreen">
     <h1>🚀 Space Rocket</h1>
     <p>Пуужингаа удирдаж саадуудыг тойрч, аль болох олон coin цуглуул!</p>
-    <button id="startBtn">Start Game</button>
+    <button id="startBtn" disabled>Start Game</button>
   </div>
   <canvas id="gameCanvas"></canvas>
-  <div id="touchControls">
-    <button class="touchBtn" id="leftBtn">Зүүн</button>
-    <button class="touchBtn" id="rightBtn">Баруун</button>
-    <button class="touchBtn" id="upBtn">Дээш</button>
-    <button class="touchBtn" id="downBtn">Доош</button>
-  </div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -111,9 +87,9 @@
 
     // Assets
     const rocketImg = new Image();
-    rocketImg.src = "assets/rocket.gif";
+    rocketImg.src = "assets/rocket.png"; // GIF-ийн оронд PNG ашиглаж байна
     const obstacleImg = new Image();
-    obstacleImg.src = "assets/obstacle.gif";
+    obstacleImg.src = "assets/obstacle.png"; // GIF-ийн оронд PNG ашиглаж байна
     const coinImg = new Image();
     coinImg.src = "assets/coin.png";
 
@@ -131,31 +107,52 @@
     coinImg.onload = assetLoaded;
 
     // Game objects
-    let rocket = { x: window.innerWidth / 2 - 25, y: window.innerHeight - 100, width: 50, height: 50, dy: 0 };
+    let rocket = { x: window.innerWidth / 2 - 25, y: window.innerHeight - 100, width: 50, height: 50, dx: 0, dy: 0 };
     let obstacles = [];
     let coins = [];
     let score = 0;
     let lastObstacleSpawn = 0;
     let lastCoinSpawn = 0;
 
+    // Touch controls
+    let touchStartX = 0;
+    let touchStartY = 0;
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+    canvas.addEventListener("touchmove", e => {
+      e.preventDefault();
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      const deltaX = touchX - touchStartX;
+      const deltaY = touchY - touchStartY;
+      rocket.dx = deltaX * 0.05; // Adjust sensitivity
+      rocket.dy = deltaY * 0.05;
+      touchStartX = touchX;
+      touchStartY = touchY;
+    });
+    canvas.addEventListener("touchend", () => {
+      rocket.dx = 0;
+      rocket.dy = 0;
+    });
+
     document.getElementById("startBtn").addEventListener("click", () => {
       document.getElementById("homeScreen").style.display = "none";
-      document.getElementById("touchControls").style.display = "flex";
       startGame();
     });
 
-    // Touch controls
-    document.getElementById("leftBtn").addEventListener("touchstart", () => rocket.x -= 20);
-    document.getElementById("rightBtn").addEventListener("touchstart", () => rocket.x += 20);
-    document.getElementById("upBtn").addEventListener("touchstart", () => rocket.y -= 20);
-    document.getElementById("downBtn").addEventListener("touchstart", () => rocket.y += 20);
-
     // Keyboard controls (for testing on desktop)
     document.addEventListener("keydown", e => {
-      if (e.code === "ArrowLeft") rocket.x -= 20;
-      if (e.code === "ArrowRight") rocket.x += 20;
-      if (e.code === "ArrowUp") rocket.y -= 20;
-      if (e.code === "ArrowDown") rocket.y += 20;
+      if (e.code === "ArrowLeft") rocket.dx = -5;
+      if (e.code === "ArrowRight") rocket.dx = 5;
+      if (e.code === "ArrowUp") rocket.dy = -5;
+      if (e.code === "ArrowDown") rocket.dy = 5;
+    });
+    document.addEventListener("keyup", () => {
+      rocket.dx = 0;
+      rocket.dy = 0;
     });
 
     function startGame() {
@@ -163,6 +160,7 @@
       score = 0;
       rocket.x = window.innerWidth / 2 - 25;
       rocket.y = window.innerHeight - 100;
+      rocket.dx = 0;
       rocket.dy = 0;
       obstacles = [];
       coins = [];
@@ -211,6 +209,13 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Update rocket position
+      rocket.x += rocket.dx;
+      rocket.y += rocket.dy;
+      // Keep rocket in bounds
+      rocket.x = Math.max(0, Math.min(rocket.x, window.innerWidth - rocket.width));
+      rocket.y = Math.max(0, Math.min(rocket.y, window.innerHeight - rocket.height));
+
       // Stars background
       updateStars();
       drawStars();
@@ -239,7 +244,6 @@
         if (checkCollision(rocket, o)) {
           gameRunning = false;
           document.getElementById("homeScreen").style.display = "flex";
-          document.getElementById("touchControls").style.display = "none";
           document.querySelector("#homeScreen p").innerText = `Таны оноо: ${score}`;
         }
       }
@@ -268,6 +272,13 @@
              a.x + a.width > b.x &&
              a.y < b.y + b.height &&
              a.y + a.height > b.y;
+    }
+
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
     }
   </script>
 </body>
