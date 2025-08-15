@@ -1,107 +1,198 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rocket Game</title>
-<style>
+  <meta charset="UTF-8" />
+  <title>Space Rocket Game</title>
+  <style>
     body {
-        margin: 0;
-        overflow: hidden;
-        background: black;
+      margin: 0;
+      background: black;
+      overflow: hidden;
+      font-family: sans-serif;
+      color: white;
+      text-align: center;
     }
-    canvas {
-        display: block;
-        margin: 0 auto;
+    #gameCanvas {
+      display: block;
+      margin: 0 auto;
+      background: black;
     }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    #homeScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #homeScreen h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    #startBtn {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background: #ffcc00;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #startBtn:hover {
+      background: #ffdd33;
+    }
+  </style>
 </head>
 <body>
+  <div id="homeScreen">
+    <h1>🚀 Space Rocket</h1>
+    <p>Пуужингаа удирдаж саадуудыг тойрч, аль болох олон coin цуглуул!</p>
+    <button id="startBtn">Start Game</button>
+  </div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-<script>
-class MainScene extends Phaser.Scene {
-    constructor() {
-        super('MainScene');
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let gameRunning = false;
+
+    // Background stars
+    const stars = Array.from({ length: 100 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 2,
+      speed: 0.5 + Math.random() * 1.5
+    }));
+
+    // Assets
+    const rocketImg = new Image();
+    rocketImg.src = "assets/rocket.gif";
+
+    const obstacleImg = new Image();
+    obstacleImg.src = "assets/obstacle.gif";
+
+    const coinImg = new Image();
+    coinImg.src = "assets/coin.png";
+
+    // Game objects
+    let rocket = { x: 180, y: 500, width: 50, height: 50, dy: 0 };
+    let obstacles = [];
+    let coins = [];
+    let score = 0;
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      document.getElementById("homeScreen").style.display = "none";
+      startGame();
+    });
+
+    function startGame() {
+      gameRunning = true;
+      score = 0;
+      rocket.x = 180;
+      rocket.y = 500;
+      rocket.dy = 0;
+      obstacles = [];
+      coins = [];
+      requestAnimationFrame(gameLoop);
     }
 
-    preload() {
-        this.load.image('bg', 'assets/bg-earth.png');
-        this.load.image('coin', 'assets/coin.png');
-        this.load.image('rocket', 'assets/rocket.gif');
-        this.load.image('obstacle', 'assets/obstacle.gif');
+    function spawnObstacle() {
+      const x = Math.random() * (canvas.width - 40);
+      obstacles.push({ x, y: -50, width: 40, height: 40 });
     }
 
-    create() {
-        this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'bg')
-            .setOrigin(0, 0);
-
-        this.rocket = this.physics.add.sprite(100, this.scale.height / 2, 'rocket');
-        this.rocket.setCollideWorldBounds(true);
-
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        this.coins = this.physics.add.group();
-        this.obstacles = this.physics.add.group();
-
-        this.score = 0;
-        this.scoreText = this.add.text(10, 10, 'Оноо: 0', { fontSize: '24px', fill: '#fff' });
-
-        this.physics.add.overlap(this.rocket, this.coins, this.collectCoin, null, this);
-        this.physics.add.collider(this.rocket, this.obstacles, this.hitObstacle, null, this);
-
-        this.time.addEvent({ delay: 1500, callback: this.spawnCoin, callbackScope: this, loop: true });
-        this.time.addEvent({ delay: 2000, callback: this.spawnObstacle, callbackScope: this, loop: true });
+    function spawnCoin() {
+      const x = Math.random() * (canvas.width - 20);
+      coins.push({ x, y: -20, width: 20, height: 20 });
     }
 
-    update() {
-        this.bg.tilePositionY -= 2;
+    setInterval(spawnObstacle, 1500);
+    setInterval(spawnCoin, 1000);
 
-        if (this.cursors.up.isDown) {
-            this.rocket.setVelocityY(-200);
-        } else if (this.cursors.down.isDown) {
-            this.rocket.setVelocityY(200);
-        } else {
-            this.rocket.setVelocityY(0);
+    document.addEventListener("keydown", e => {
+      if (e.code === "ArrowLeft") rocket.x -= 20;
+      if (e.code === "ArrowRight") rocket.x += 20;
+      if (e.code === "ArrowUp") rocket.y -= 20;
+      if (e.code === "ArrowDown") rocket.y += 20;
+    });
+
+    function updateStars() {
+      for (let s of stars) {
+        s.y += s.speed;
+        if (s.y > canvas.height) {
+          s.y = 0;
+          s.x = Math.random() * canvas.width;
         }
+      }
     }
 
-    spawnCoin() {
-        let x = Phaser.Math.Between(200, this.scale.width - 50);
-        let coin = this.coins.create(x, 0, 'coin');
-        coin.setVelocityY(150);
+    function drawStars() {
+      ctx.fillStyle = "white";
+      for (let s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    spawnObstacle() {
-        let x = Phaser.Math.Between(200, this.scale.width - 50);
-        let obstacle = this.obstacles.create(x, 0, 'obstacle');
-        obstacle.setVelocityY(200);
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Stars background
+      updateStars();
+      drawStars();
+
+      // Draw rocket
+      ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.width, rocket.height);
+
+      // Obstacles
+      for (let o of obstacles) {
+        o.y += 3;
+        ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
+      }
+
+      // Coins
+      for (let c of coins) {
+        c.y += 2;
+        ctx.drawImage(coinImg, c.x, c.y, c.width, c.height);
+      }
+
+      // Collision detection
+      for (let o of obstacles) {
+        if (checkCollision(rocket, o)) {
+          gameRunning = false;
+          document.getElementById("homeScreen").style.display = "flex";
+          document.querySelector("#homeScreen p").innerText = `Таны оноо: ${score}`;
+        }
+      }
+
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (checkCollision(rocket, coins[i])) {
+          score++;
+          coins.splice(i, 1);
+        }
+      }
+
+      // Remove off-screen
+      obstacles = obstacles.filter(o => o.y < canvas.height);
+      coins = coins.filter(c => c.y < canvas.height);
+
+      // Score
+      ctx.font = "20px Arial";
+      ctx.fillText("Оноо: " + score, 10, 30);
+
+      requestAnimationFrame(gameLoop);
     }
 
-    collectCoin(rocket, coin) {
-        coin.destroy();
-        this.score += 10;
-        this.scoreText.setText('Оноо: ' + this.score);
+    function checkCollision(a, b) {
+      return a.x < b.x + b.width &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.height &&
+             a.y + a.height > b.y;
     }
-
-    hitObstacle() {
-        this.scene.restart(); // Текст үзүүлэхгүй шууд тоглоомыг дахин эхлүүлнэ
-    }
-}
-
-const config = {
-    type: Phaser.AUTO,
-    width: 480,
-    height: 800,
-    physics: {
-        default: 'arcade',
-        arcade: { debug: false }
-    },
-    scene: [MainScene]
-};
-
-new Phaser.Game(config);
-</script>
-
+  </script>
 </body>
 </html>
