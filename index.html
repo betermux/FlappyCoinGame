@@ -2,7 +2,10 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Space Rocket Game</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
   <style>
     body {
       margin: 0;
@@ -11,10 +14,12 @@
       font-family: sans-serif;
       color: white;
       text-align: center;
+      touch-action: none; /* Prevent default touch behaviors */
     }
     #gameCanvas {
       display: block;
-      margin: 0 auto;
+      width: 100%;
+      height: 100vh;
       background: black;
     }
     #homeScreen {
@@ -27,12 +32,16 @@
       align-items: center;
     }
     #homeScreen h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
+      font-size: 5vw;
+      margin-bottom: 2vh;
+    }
+    #homeScreen p {
+      font-size: 3vw;
+      margin-bottom: 2vh;
     }
     #startBtn {
-      padding: 10px 20px;
-      font-size: 1.2em;
+      padding: 2vh 4vw;
+      font-size: 4vw;
       background: #ffcc00;
       border: none;
       border-radius: 10px;
@@ -40,6 +49,24 @@
     }
     #startBtn:hover {
       background: #ffdd33;
+    }
+    #touchControls {
+      position: absolute;
+      bottom: 5vh;
+      width: 100%;
+      display: none;
+      justify-content: space-between;
+      padding: 0 5vw;
+      box-sizing: border-box;
+    }
+    .touchBtn {
+      padding: 3vh 5vw;
+      font-size: 4vw;
+      background: rgba(255, 255, 255, 0.3);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -49,18 +76,35 @@
     <p>Пуужингаа удирдаж саадуудыг тойрч, аль болох олон coin цуглуул!</p>
     <button id="startBtn">Start Game</button>
   </div>
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <canvas id="gameCanvas"></canvas>
+  <div id="touchControls">
+    <button class="touchBtn" id="leftBtn">Зүүн</button>
+    <button class="touchBtn" id="rightBtn">Баруун</button>
+    <button class="touchBtn" id="upBtn">Дээш</button>
+    <button class="touchBtn" id="downBtn">Доош</button>
+  </div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
+    // Responsive canvas sizing
+    function resizeCanvas() {
+      canvas.width = window.innerWidth * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
     let gameRunning = false;
 
     // Background stars
     const stars = Array.from({ length: 100 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
       size: Math.random() * 2,
       speed: 0.5 + Math.random() * 1.5
     }));
@@ -68,48 +112,45 @@
     // Assets
     const rocketImg = new Image();
     rocketImg.src = "assets/rocket.gif";
-
     const obstacleImg = new Image();
     obstacleImg.src = "assets/obstacle.gif";
-
     const coinImg = new Image();
     coinImg.src = "assets/coin.png";
 
+    // Preload assets
+    let assetsLoaded = 0;
+    const totalAssets = 3;
+    function assetLoaded() {
+      assetsLoaded++;
+      if (assetsLoaded === totalAssets) {
+        document.getElementById("startBtn").disabled = false;
+      }
+    }
+    rocketImg.onload = assetLoaded;
+    obstacleImg.onload = assetLoaded;
+    coinImg.onload = assetLoaded;
+
     // Game objects
-    let rocket = { x: 180, y: 500, width: 50, height: 50, dy: 0 };
+    let rocket = { x: window.innerWidth / 2 - 25, y: window.innerHeight - 100, width: 50, height: 50, dy: 0 };
     let obstacles = [];
     let coins = [];
     let score = 0;
+    let lastObstacleSpawn = 0;
+    let lastCoinSpawn = 0;
 
     document.getElementById("startBtn").addEventListener("click", () => {
       document.getElementById("homeScreen").style.display = "none";
+      document.getElementById("touchControls").style.display = "flex";
       startGame();
     });
 
-    function startGame() {
-      gameRunning = true;
-      score = 0;
-      rocket.x = 180;
-      rocket.y = 500;
-      rocket.dy = 0;
-      obstacles = [];
-      coins = [];
-      requestAnimationFrame(gameLoop);
-    }
+    // Touch controls
+    document.getElementById("leftBtn").addEventListener("touchstart", () => rocket.x -= 20);
+    document.getElementById("rightBtn").addEventListener("touchstart", () => rocket.x += 20);
+    document.getElementById("upBtn").addEventListener("touchstart", () => rocket.y -= 20);
+    document.getElementById("downBtn").addEventListener("touchstart", () => rocket.y += 20);
 
-    function spawnObstacle() {
-      const x = Math.random() * (canvas.width - 40);
-      obstacles.push({ x, y: -50, width: 40, height: 40 });
-    }
-
-    function spawnCoin() {
-      const x = Math.random() * (canvas.width - 20);
-      coins.push({ x, y: -20, width: 20, height: 20 });
-    }
-
-    setInterval(spawnObstacle, 1500);
-    setInterval(spawnCoin, 1000);
-
+    // Keyboard controls (for testing on desktop)
     document.addEventListener("keydown", e => {
       if (e.code === "ArrowLeft") rocket.x -= 20;
       if (e.code === "ArrowRight") rocket.x += 20;
@@ -117,12 +158,41 @@
       if (e.code === "ArrowDown") rocket.y += 20;
     });
 
+    function startGame() {
+      gameRunning = true;
+      score = 0;
+      rocket.x = window.innerWidth / 2 - 25;
+      rocket.y = window.innerHeight - 100;
+      rocket.dy = 0;
+      obstacles = [];
+      coins = [];
+      lastObstacleSpawn = performance.now();
+      lastCoinSpawn = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function spawnObstacle(time) {
+      if (time - lastObstacleSpawn > 1500) {
+        const x = Math.random() * (window.innerWidth - 40);
+        obstacles.push({ x, y: -50, width: 40, height: 40 });
+        lastObstacleSpawn = time;
+      }
+    }
+
+    function spawnCoin(time) {
+      if (time - lastCoinSpawn > 1000) {
+        const x = Math.random() * (window.innerWidth - 20);
+        coins.push({ x, y: -20, width: 20, height: 20 });
+        lastCoinSpawn = time;
+      }
+    }
+
     function updateStars() {
       for (let s of stars) {
         s.y += s.speed;
-        if (s.y > canvas.height) {
+        if (s.y > window.innerHeight) {
           s.y = 0;
-          s.x = Math.random() * canvas.width;
+          s.x = Math.random() * window.innerWidth;
         }
       }
     }
@@ -136,7 +206,7 @@
       }
     }
 
-    function gameLoop() {
+    function gameLoop(time) {
       if (!gameRunning) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -148,13 +218,17 @@
       // Draw rocket
       ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.width, rocket.height);
 
-      // Obstacles
+      // Spawn objects
+      spawnObstacle(time);
+      spawnCoin(time);
+
+      // Update and draw obstacles
       for (let o of obstacles) {
         o.y += 3;
         ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
       }
 
-      // Coins
+      // Update and draw coins
       for (let c of coins) {
         c.y += 2;
         ctx.drawImage(coinImg, c.x, c.y, c.width, c.height);
@@ -165,6 +239,7 @@
         if (checkCollision(rocket, o)) {
           gameRunning = false;
           document.getElementById("homeScreen").style.display = "flex";
+          document.getElementById("touchControls").style.display = "none";
           document.querySelector("#homeScreen p").innerText = `Таны оноо: ${score}`;
         }
       }
@@ -177,11 +252,12 @@
       }
 
       // Remove off-screen
-      obstacles = obstacles.filter(o => o.y < canvas.height);
-      coins = coins.filter(c => c.y < canvas.height);
+      obstacles = obstacles.filter(o => o.y < window.innerHeight);
+      coins = coins.filter(c => c.y < window.innerHeight);
 
       // Score
-      ctx.font = "20px Arial";
+      ctx.font = `${Math.max(3, window.innerWidth / 20)}px Arial`;
+      ctx.fillStyle = "white";
       ctx.fillText("Оноо: " + score, 10, 30);
 
       requestAnimationFrame(gameLoop);
