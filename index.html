@@ -206,8 +206,8 @@
     const coinImg = new Image(); coinImg.src = "assets/coin.png";
 
     let running=false, score=0;
-    // Doubled rocket size
-    let rocket = { x: window.innerWidth/2-50, y: window.innerHeight-120, w: 100, h: 100, targetX: window.innerWidth/2-50, speed: 0.15 };
+    // Doubled rocket size, moved up, and added targetX for smooth movement
+    let rocket = { x: window.innerWidth/2-50, y: window.innerHeight-200, w: 100, h: 100, targetX: window.innerWidth/2-50, speed: 0.15 };
     let obstacles=[], coins=[];
     let touchStartX=null;
 
@@ -215,9 +215,9 @@
     canvas.addEventListener("touchend", e => {
       if (touchStartX==null) return;
       const dx = e.changedTouches[0].clientX - touchStartX;
-      // Adjust targetX for smooth movement
-      if (dx>40) rocket.targetX = Math.min(rocket.x + 120, window.innerWidth - rocket.w); // Increased movement step for larger rocket
-      if (dx<-40) rocket.targetX = Math.max(rocket.x - 120, 0); // Increased movement step for larger rocket
+      // Set targetX directly to the touch release X coordinate for free movement
+      // Ensure targetX keeps the rocket within bounds
+      rocket.targetX = Math.max(0, Math.min(e.changedTouches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
       touchStartX=null;
     });
 
@@ -274,6 +274,16 @@
     }
 
     function hit(a,b){
+      // This function checks for bounding box collision.
+      // If you want to make the collision area smaller than the image,
+      // you would need to adjust 'a.w', 'a.h', 'b.w', 'b.h' or add an offset here.
+      // For example, to shrink the rocket's collision box by 10px on each side:
+      // const rocketCollisionX = a.x + 10;
+      // const rocketCollisionY = a.y + 10;
+      // const rocketCollisionW = a.w - 20;
+      // const rocketCollisionH = a.h - 20;
+      // return rocketCollisionX < b.x + b.w && rocketCollisionX + rocketCollisionW > b.x &&
+      //        rocketCollisionY < b.y + b.h && rocketCollisionY + rocketCollisionH > b.y;
       return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     }
 
@@ -294,7 +304,7 @@
       score=0; obstacles.length=0; coins.length=0;
       rocket.x = window.innerWidth/2-rocket.w/2; // Center rocket initially
       rocket.targetX = rocket.x; // Set targetX to current position
-      rocket.y = window.innerHeight-120;
+      rocket.y = window.innerHeight-200; // Adjusted rocket initial Y position
       running=true;
       requestAnimationFrame(loop);
     });
