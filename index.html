@@ -265,7 +265,13 @@
       speed: 0.15,
       rotation: 0, // Current rotation angle in radians
       targetRotation: 0, // Target rotation angle in radians
-      rotationSpeed: 0.1 // How quickly the rocket rotates towards targetRotation
+      rotationSpeed: 0.1, // How quickly the rocket rotates towards targetRotation
+      // Define precise collision offsets for the rocket image
+      // Adjust these values based on your rocket.png's transparent areas
+      collisionOffsetX: 15, // Pixels to offset from left/right
+      collisionOffsetY: 5,  // Pixels to offset from top/bottom
+      collisionWidthShrink: 30, // Total pixels to shrink width (2 * collisionOffsetX)
+      collisionHeightShrink: 10 // Total pixels to shrink height (2 * collisionOffsetY)
     };
     let obstacles=[], coins=[];
     let touchStartX=null;
@@ -333,9 +339,6 @@
         collected: false // Flag for collection animation
       });
     }
-
-    // Define a padding for collision detection to ignore transparent edges of the rocket
-    const rocketCollisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
 
     function loop(t){
       if (!running) return;
@@ -416,11 +419,11 @@
     }
 
     function hit(a,b){
-      // Apply padding to shrink the collision box for the rocket (a)
-      const aX = a.x + rocketCollisionPadding;
-      const aY = a.y + rocketCollisionPadding;
-      const aW = a.w - (rocketCollisionPadding * 2);
-      const aH = a.h - (rocketCollisionPadding * 2);
+      // Calculate collision box for rocket (a) using its specific offsets
+      const aX = a.x + a.collisionOffsetX;
+      const aY = a.y + a.collisionOffsetY;
+      const aW = a.w - a.collisionWidthShrink;
+      const aH = a.h - a.collisionHeightShrink;
 
       // Apply padding to shrink the collision box for the obstacle (b)
       // Use b.collisionPadding if available, otherwise default to 0 for coins (no padding)
