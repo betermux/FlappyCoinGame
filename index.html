@@ -129,7 +129,7 @@
   <div id="leaderboardScreen" class="screen">
     <div id="boardCard">
       <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 8px;">
-        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Score)</h2>
+        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Coin)</h2> <!-- CHANGED HERE -->
         <span id="entriesMeta" class="pill">—</span>
       </div>
       <div style="overflow:auto; max-height: 60vh;">
@@ -138,7 +138,7 @@
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Coin (Total)</th> <!-- Changed "Score (Total)" to "Coin (Total)" -->
+              <th>Coin (Total)</th> <!-- CHANGED HERE -->
               <!-- Removed "Last Played" header -->
             </tr>
           </thead>
@@ -468,7 +468,7 @@
       tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; // Adjusted colspan
       const snapshot = await get(child(ref(db), "scores"));
       if (!snapshot.exists()){
-        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No scores yet.</td></tr>`; // Adjusted colspan
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins yet.</td></tr>`; // Adjusted colspan
         entriesMeta.textContent = "0 players";
         return;
       }
