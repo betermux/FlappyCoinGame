@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Rocket Game with Leaderboard</title>
+  <title>Rocket Game with Telegram Login</title>
   <style>
     body { margin: 0; background: black; color: white; font-family: Arial; overflow: hidden; }
     #gameCanvas { display: block; width: 100%; height: 80vh; background: black; }
@@ -18,18 +18,35 @@
     th, td { border:1px solid #444; padding:5px; text-align:center; }
     th { background:#222; }
     button { margin:2px; padding:5px 10px; cursor:pointer; }
+    #userInfo {
+      position: absolute; top: 10px; left: 10px;
+      display: flex; align-items: center;
+      background: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 20px;
+    }
+    #userPhoto {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
   <!-- Home screen -->
   <div id="homeScreen">
     <h1>🚀 Space Rocket</h1>
-    <input type="text" id="usernameInput" placeholder="Таны нэр">
     <button id="startBtn">Start Game</button>
   </div>
 
   <!-- Canvas -->
   <canvas id="gameCanvas"></canvas>
+
+  <!-- User info (Telegram username/photo) -->
+  <div id="userInfo" style="display:none;">
+    <img id="userPhoto" />
+    <span id="userName"></span>
+  </div>
 
   <!-- Leaderboard -->
   <div id="leaderboardScreen">
@@ -42,6 +59,9 @@
     </table>
     <button onclick="restart()">🔄 Дахин тоглох</button>
   </div>
+
+  <!-- Telegram SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
@@ -62,20 +82,31 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // Telegram WebApp user
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    const user = tg.initDataUnsafe?.user;
+    let currentUser = "guest";
+    let photoUrl = "";
+    if (user) {
+      currentUser = user.username || (user.first_name + " " + (user.last_name||""));
+      photoUrl = user.photo_url || "";
+    }
+    document.getElementById("userName").textContent = currentUser;
+    if (photoUrl) document.getElementById("userPhoto").src = photoUrl;
+    document.getElementById("userInfo").style.display="flex";
+
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight * 0.8;
 
-    // UI
     const homeScreen = document.getElementById("homeScreen");
     const leaderboardScreen = document.getElementById("leaderboardScreen");
     const startBtn = document.getElementById("startBtn");
-    const usernameInput = document.getElementById("usernameInput");
     const leaderboardBody = document.getElementById("leaderboardBody");
     const adminCol = document.getElementById("adminCol");
 
-    let currentUser = "";
     let score = 0;
     let rocket = { x: canvas.width/2-25, y: canvas.height-100, width:50, height:50 };
     let obstacles = [];
@@ -100,8 +131,6 @@
 
     // Start game
     startBtn.onclick = () => {
-      currentUser = usernameInput.value.trim();
-      if (!currentUser) { alert("Нэрээ оруул!"); return; }
       homeScreen.style.display="none";
       score = 0; obstacles=[]; coins=[];
       rocket.x = canvas.width/2-25;
@@ -121,20 +150,16 @@
       if (!running) return;
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // Draw rocket
       ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.width, rocket.height);
 
-      // Obstacles
       if (Math.random()<0.02) spawnObstacle();
       obstacles.forEach(o => { o.y+=3; ctx.drawImage(obstacleImg,o.x,o.y,o.w,o.h); });
       obstacles = obstacles.filter(o => o.y<canvas.height);
 
-      // Coins
       if (Math.random()<0.02) spawnCoin();
       coins.forEach(c => { c.y+=2; ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); });
       coins = coins.filter(c => c.y<canvas.height);
 
-      // Collisions
       for (let o of obstacles) {
         if (collision(rocket,o)) { endGame(); return; }
       }
@@ -142,7 +167,6 @@
         if (collision(rocket,coins[i])) { score++; coins.splice(i,1); }
       }
 
-      // Score text
       ctx.fillStyle="white"; ctx.font="20px Arial";
       ctx.fillText("Оноо: "+score,10,30);
 
@@ -150,20 +174,17 @@
     }
 
     function collision(a,b) {
-      return a.x<a.x+a.width &&
-             a.x+b.w > b.x &&
-             a.y+b.h > b.y &&
-             a.y < b.y+b.h &&
-             a.x+a.width > b.x;
+      return a.x < b.x + b.w &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.h &&
+             a.y + a.height > b.y;
     }
 
     async function endGame() {
       running = false;
-      // save score
       const scoresRef = ref(db,"scores");
       const newRef = push(scoresRef);
       await set(newRef,{ username: currentUser, score, createdAt:new Date().toISOString() });
-      // show leaderboard
       showLeaderboard();
     }
 
