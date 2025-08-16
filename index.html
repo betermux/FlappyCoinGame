@@ -260,15 +260,26 @@
 
     function spawnObstacle(){
       const size=72; // Doubled obstacle size
-      obstacles.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:3, rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05 }); // Added rotation properties
+      // Define a specific padding for the obstacle's collision box
+      const obstacleCollisionPadding = 15; // Adjust this value based on your obstacle image's transparent areas
+      obstacles.push({
+        x:Math.random()*(window.innerWidth-size), 
+        y:-size, 
+        w:size, 
+        h:size, 
+        vy:3, 
+        rotation: 0, 
+        rotationSpeed: (Math.random() - 0.5) * 0.05,
+        collisionPadding: obstacleCollisionPadding // Add collision padding to obstacle object
+      }); 
     }
     function spawnCoin(){
       const size=44; // Doubled coin size
       coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
     }
 
-    // Define a padding for collision detection to ignore transparent edges
-    const collisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
+    // Define a padding for collision detection to ignore transparent edges of the rocket
+    const rocketCollisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
 
     function loop(t){
       if (!running) return;
@@ -324,16 +335,19 @@
     }
 
     function hit(a,b){
-      // Apply padding to shrink the collision box for more accurate collision
-      const aX = a.x + collisionPadding;
-      const aY = a.y + collisionPadding;
-      const aW = a.w - (collisionPadding * 2);
-      const aH = a.h - (collisionPadding * 2);
+      // Apply padding to shrink the collision box for the rocket (a)
+      const aX = a.x + rocketCollisionPadding;
+      const aY = a.y + rocketCollisionPadding;
+      const aW = a.w - (rocketCollisionPadding * 2);
+      const aH = a.h - (rocketCollisionPadding * 2);
 
-      const bX = b.x + collisionPadding;
-      const bY = b.y + collisionPadding;
-      const bW = b.w - (collisionPadding * 2);
-      const bH = b.h - (collisionPadding * 2);
+      // Apply padding to shrink the collision box for the obstacle (b)
+      // Use b.collisionPadding if available, otherwise default to 0 or a small value
+      const bPadding = b.collisionPadding !== undefined ? b.collisionPadding : 0; 
+      const bX = b.x + bPadding;
+      const bY = b.y + bPadding;
+      const bW = b.w - (bPadding * 2);
+      const bH = b.h - (bPadding * 2);
 
       return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
     }
