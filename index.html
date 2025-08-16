@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="mn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -7,297 +7,280 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#000000" />
   <style>
+    :root { --bg:#000; --txt:#fff; }
     body {
       margin: 0;
-      background: black;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: system-ui, -apple-system, Arial, sans-serif;
       overflow: hidden;
-      font-family: sans-serif;
-      color: white;
-      text-align: center;
-      touch-action: none; /* Prevent default touch behaviors */
+      touch-action: none;
     }
     #gameCanvas {
       display: block;
-      width: 100%;
+      width: 100vw;
       height: 100vh;
-      background: black;
+      background: #000;
     }
     #homeScreen {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      text-align: center;
+      padding: 2rem;
+      gap: 1rem;
+      z-index: 10;
     }
-    #homeScreen h1 {
-      font-size: 5vw;
-      margin-bottom: 2vh;
-    }
-    #homeScreen p {
-      font-size: 3vw;
-      margin-bottom: 2vh;
-    }
+    #homeScreen h1 { font-size: clamp(24px, 5vw, 40px); margin: 0; }
+    #homeScreen p  { font-size: clamp(16px, 3.5vw, 20px); margin: 0.25rem 0 0.5rem; opacity: 0.9; }
+    #lastScore     { font-weight: 700; }
     #startBtn {
-      padding: 2vh 4vw;
-      font-size: 4vw;
+      padding: 12px 20px;
+      font-size: clamp(16px, 4vw, 20px);
       background: #ffcc00;
-      border: none;
-      border-radius: 10px;
+      border: 0;
+      border-radius: 12px;
+      color: #000;
       cursor: pointer;
     }
-    #startBtn:hover {
-      background: #ffdd33;
-    }
-    #touchControls {
-      position: absolute;
-      bottom: 5vh;
-      width: 100%;
-      display: none;
-      justify-content: space-between;
-      padding: 0 5vw;
-      box-sizing: border-box;
-    }
-    .touchBtn {
-      padding: 3vh 5vw;
-      font-size: 4vw;
-      background: rgba(255, 255, 255, 0.3);
-      border: none;
-      border-radius: 10px;
-      color: white;
-      cursor: pointer;
-    }
+    #startBtn:disabled { opacity: 0.6; cursor: default; }
+    #startBtn:not(:disabled):hover { background:#ffdd33; }
   </style>
 </head>
 <body>
   <div id="homeScreen">
     <h1>🚀 Space Rocket</h1>
-    <p>Пуужингаа удирдаж саадуудыг тойрч, аль болох олон coin цуглуул!</p>
-    <button id="startBtn">Start Game</button>
+    <p>Пуужингаа зүүн/баруун **swipe**–аар удирдаж, саадаас бултаад coin цуглуул!</p>
+    <p id="lastScore" style="display:none"></p>
+    <button id="startBtn" disabled>Start Game</button>
   </div>
+
   <canvas id="gameCanvas"></canvas>
-  <div id="touchControls">
-    <button class="touchBtn" id="leftBtn">Зүүн</button>
-    <button class="touchBtn" id="rightBtn">Баруун</button>
-    <button class="touchBtn" id="upBtn">Дээш</button>
-    <button class="touchBtn" id="downBtn">Доош</button>
-  </div>
 
   <script>
+    // ===== Canvas & DPR =====
     const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    let DPR = Math.max(1, window.devicePixelRatio || 1);
 
-    // Responsive canvas sizing
     function resizeCanvas() {
-      canvas.width = window.innerWidth * window.devicePixelRatio;
-      canvas.height = window.innerHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
+      DPR = Math.max(1, window.devicePixelRatio || 1);
+      const cssW = window.innerWidth;
+      const cssH = window.innerHeight;
+      canvas.style.width = cssW + "px";
+      canvas.style.height = cssH + "px";
+      canvas.width = Math.floor(cssW * DPR);
+      canvas.height = Math.floor(cssH * DPR);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(DPR, DPR);
     }
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener("resize", resizeCanvas);
 
+    // ===== State =====
     let gameRunning = false;
+    let score = 0;
 
-    // Background stars
-    const stars = Array.from({ length: 100 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      size: Math.random() * 2,
-      speed: 0.5 + Math.random() * 1.5
-    }));
-
-    // Assets
-    const rocketImg = new Image();
-    rocketImg.src = "assets/rocket.png"; // Changed to PNG
-    const obstacleImg = new Image();
-    obstacleImg.src = "assets/obstacle.png"; // Changed to PNG
-    const coinImg = new Image();
-    coinImg.src = "assets/coin.png";
-
-    // Animation properties
-    const rocketFrameCount = 4; // Adjust based on your sprite sheet
-    const obstacleFrameCount = 4; // Adjust based on your sprite sheet
-    const frameWidth = 50; // Width of each frame in the sprite sheet
-    const frameHeight = 50; // Height of each frame in the sprite sheet
-    let rocketFrameIndex = 0;
-    let obstacleFrameIndex = 0;
-    const frameSpeed = 100; // Milliseconds per frame
-    let lastFrameUpdate = 0;
-
-    // Preload assets
-    let assetsLoaded = 0;
-    const totalAssets = 3;
-    function assetLoaded() {
-      assetsLoaded++;
-      if (assetsLoaded === totalAssets) {
-        document.getElementById("startBtn").disabled = false;
+    // ===== Stars (parallax) =====
+    const STAR_LAYERS = [
+      { count: 32, speed: 0.6, size: [1, 2] },
+      { count: 28, speed: 1.0, size: [1, 2.2] },
+      { count: 20, speed: 1.6, size: [1.2, 2.6] },
+    ];
+    let stars = [];
+    function initStars() {
+      stars = [];
+      const w = window.innerWidth, h = window.innerHeight;
+      for (const layer of STAR_LAYERS) {
+        for (let i = 0; i < layer.count; i++) {
+          stars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            r: layer.size[0] + Math.random() * (layer.size[1]-layer.size[0]),
+            speed: layer.speed
+          });
+        }
       }
     }
-    rocketImg.onload = assetLoaded;
-    obstacleImg.onload = assetLoaded;
-    coinImg.onload = assetLoaded;
+    initStars();
+    function updateStars() {
+      const h = window.innerHeight, w = window.innerWidth;
+      for (const s of stars) {
+        s.y += s.speed;
+        if (s.y > h) { s.y = -4; s.x = Math.random() * w; }
+      }
+    }
+    function drawStars() {
+      ctx.fillStyle = "#fff";
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
-    // Game objects
-    let rocket = { x: window.innerWidth / 2 - 25, y: window.innerHeight - 100, width: 50, height: 50, dy: 0 };
+    // ===== Assets =====
+    const rocketImg = new Image();   rocketImg.src   = "assets/rocket.gif";
+    const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.gif";
+    const coinImg = new Image();     coinImg.src     = "assets/coin.png";
+
+    let assetsLoaded = 0;
+    const totalAssets = 3;
+    const startBtn = document.getElementById("startBtn");
+    const home = document.getElementById("homeScreen");
+    const lastScoreEl = document.getElementById("lastScore");
+
+    function onAssetLoaded(){ if(++assetsLoaded === totalAssets){ startBtn.disabled = false; } }
+    rocketImg.onload = onAssetLoaded;
+    obstacleImg.onload = onAssetLoaded;
+    coinImg.onload = onAssetLoaded;
+
+    // --- Fallback: 1 секундын дараа ямар ч байсан Start идэвхжүүлнэ ---
+    setTimeout(()=>{ startBtn.disabled = false; }, 1000);
+
+    // ===== Game objects =====
+    const R_INIT_W = 50, R_INIT_H = 50;
+    let rocket = { x: 0, y: 0, w: R_INIT_W, h: R_INIT_H };
     let obstacles = [];
     let coins = [];
-    let score = 0;
     let lastObstacleSpawn = 0;
     let lastCoinSpawn = 0;
 
-    document.getElementById("startBtn").addEventListener("click", () => {
-      document.getElementById("homeScreen").style.display = "none";
-      document.getElementById("touchControls").style.display = "flex";
-      startGame();
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+    // ===== Swipe/drag control (X-axis only) =====
+    let dragging = false;
+    let dragOffsetX = 0;
+
+    canvas.addEventListener("touchstart", (e) => {
+      if (!gameRunning) return;               // тоглоом эхлээгүй үед event авахгүй
+      const t = e.changedTouches[0];
+      dragging = true;
+      dragOffsetX = t.clientX - rocket.x;
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (!dragging || !gameRunning) return;
+      const t = e.changedTouches[0];
+      const mx = t.clientX;
+      rocket.x = clamp(mx - dragOffsetX, 0, window.innerWidth - rocket.w);
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", () => { dragging = false; });
+
+    // Keyboard (desktop test)
+    document.addEventListener("keydown", (e) => {
+      if (!gameRunning) return;
+      if (e.code === "ArrowLeft")  rocket.x = clamp(rocket.x - 24, 0, window.innerWidth - rocket.w);
+      if (e.code === "ArrowRight") rocket.x = clamp(rocket.x + 24, 0, window.innerWidth - rocket.w);
     });
 
-    // Touch controls
-    document.getElementById("leftBtn").addEventListener("touchstart", () => rocket.x -= 20);
-    document.getElementById("rightBtn").addEventListener("touchstart", () => rocket.x += 20);
-    document.getElementById("upBtn").addEventListener("touchstart", () => rocket.y -= 20);
-    document.getElementById("downBtn").addEventListener("touchstart", () => rocket.y += 20);
-
-    // Keyboard controls (for testing on desktop)
-    document.addEventListener("keydown", e => {
-      if (e.code === "ArrowLeft") rocket.x -= 20;
-      if (e.code === "ArrowRight") rocket.x += 20;
-      if (e.code === "ArrowUp") rocket.y -= 20;
-      if (e.code === "ArrowDown") rocket.y += 20;
+    // ===== Home / Start =====
+    startBtn.addEventListener("click", () => {
+      // зарим төхөөрөмж дээр layout өөрчлөгддөг тул canvas-г дахин тохируулъя
+      resizeCanvas();
+      startGame();
+      home.style.display = "none";
     });
 
     function startGame() {
       gameRunning = true;
       score = 0;
-      rocket.x = window.innerWidth / 2 - 25;
-      rocket.y = window.innerHeight - 100;
-      rocket.dy = 0;
       obstacles = [];
       coins = [];
+      initStars();
+      rocket.w = R_INIT_W; rocket.h = R_INIT_H;
+      rocket.x = (window.innerWidth - rocket.w) / 2;
+      rocket.y = window.innerHeight - (rocket.h + 80);
       lastObstacleSpawn = performance.now();
       lastCoinSpawn = performance.now();
-      lastFrameUpdate = performance.now();
       requestAnimationFrame(gameLoop);
     }
 
+    // ===== Spawners =====
     function spawnObstacle(time) {
       if (time - lastObstacleSpawn > 1500) {
-        const x = Math.random() * (window.innerWidth - 40);
-        obstacles.push({ x, y: -50, width: 40, height: 40 });
+        const size = 36;
+        const x = Math.random() * (window.innerWidth - size);
+        obstacles.push({ x, y: -size, w: size, h: size, vy: 3 });
         lastObstacleSpawn = time;
       }
     }
-
     function spawnCoin(time) {
       if (time - lastCoinSpawn > 1000) {
-        const x = Math.random() * (window.innerWidth - 20);
-        coins.push({ x, y: -20, width: 20, height: 20 });
+        const size = 22;
+        const x = Math.random() * (window.innerWidth - size);
+        coins.push({ x, y: -size, w: size, h: size, vy: 2 });
         lastCoinSpawn = time;
       }
     }
 
-    function updateStars() {
-      for (let s of stars) {
-        s.y += s.speed;
-        if (s.y > window.innerHeight) {
-          s.y = 0;
-          s.x = Math.random() * window.innerWidth;
-        }
-      }
-    }
-
-    function drawStars() {
-      ctx.fillStyle = "white";
-      for (let s of stars) {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    function updateAnimations(time) {
-      if (time - lastFrameUpdate > frameSpeed) {
-        rocketFrameIndex = (rocketFrameIndex + 1) % rocketFrameCount;
-        obstacleFrameIndex = (obstacleFrameIndex + 1) % obstacleFrameCount;
-        lastFrameUpdate = time;
-      }
-    }
-
+    // ===== Loop =====
     function gameLoop(time) {
       if (!gameRunning) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Update animations
-      updateAnimations(time);
-
-      // Stars background
       updateStars();
       drawStars();
 
-      // Draw rocket with sprite sheet
-      ctx.drawImage(
-        rocketImg,
-        rocketFrameIndex * frameWidth, 0, frameWidth, frameHeight,
-        rocket.x, rocket.y, rocket.width, rocket.height
-      );
-
-      // Spawn objects
       spawnObstacle(time);
       spawnCoin(time);
 
-      // Update and draw obstacles with sprite sheet
-      for (let o of obstacles) {
-        o.y += 3;
-        ctx.drawImage(
-          obstacleImg,
-          obstacleFrameIndex * frameWidth, 0, frameWidth, frameHeight,
-          o.x, o.y, o.width, o.height
-        );
+      // GIF-үүдийг зөвхөн ачаалсан үед нь зурна (алдаа/гацалтээс сэргийлнэ)
+      if (rocketImg.complete)   ctx.drawImage(rocketImg,   rocket.x, rocket.y, rocket.w, rocket.h);
+
+      for (const o of obstacles) {
+        o.y += o.vy;
+        if (obstacleImg.complete) ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h);
       }
 
-      // Update and draw coins
-      for (let c of coins) {
-        c.y += 2;
-        ctx.drawImage(coinImg, c.x, c.y, c.width, c.height);
+      for (const c of coins) {
+        c.y += c.vy;
+        if (coinImg.complete) ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
       }
 
-      // Collision detection
-      for (let o of obstacles) {
-        if (checkCollision(rocket, o)) {
+      // Collisions
+      for (const o of obstacles) {
+        if (collide(rocket, o)) {
           gameRunning = false;
-          document.getElementById("homeScreen").style.display = "flex";
-          document.getElementById("touchControls").style.display = "none";
-          document.querySelector("#homeScreen p").innerText = `Таны оноо: ${score}`;
+          lastScoreEl.style.display = "block";
+          lastScoreEl.textContent = "Таны оноо: " + score;
+          home.style.display = "flex";
+          return;
         }
       }
-
       for (let i = coins.length - 1; i >= 0; i--) {
-        if (checkCollision(rocket, coins[i])) {
+        if (collide(rocket, coins[i])) {
           score++;
           coins.splice(i, 1);
         }
       }
 
-      // Remove off-screen
-      obstacles = obstacles.filter(o => o.y < window.innerHeight);
-      coins = coins.filter(c => c.y < window.innerHeight);
+      // Cleanup
+      const H = window.innerHeight;
+      obstacles = obstacles.filter(o => o.y < H + 60);
+      coins     = coins.filter(c => c.y < H + 60);
 
-      // Score
-      ctx.font = `${Math.max(3, window.innerWidth / 20)}px Arial`;
-      ctx.fillStyle = "white";
+      // HUD
+      ctx.font = `${Math.max(14, window.innerWidth / 20)}px Arial`;
+      ctx.fillStyle = "#fff";
       ctx.fillText("Оноо: " + score, 10, 30);
 
       requestAnimationFrame(gameLoop);
     }
 
-    function checkCollision(a, b) {
-      return a.x < b.x + b.width &&
-             a.x + a.width > b.x &&
-             a.y < b.y + b.height &&
-             a.y + a.height > b.y;
+    function collide(a, b) {
+      return a.x < b.x + b.w &&
+             a.x + a.w > b.x &&
+             a.y < b.y + b.h &&
+             a.y + a.h > b.y;
     }
   </script>
 </body>
