@@ -267,11 +267,11 @@
       targetRotation: 0, // Target rotation angle in radians
       rotationSpeed: 0.1, // How quickly the rocket rotates towards targetRotation
       // Define precise collision offsets for the rocket image
-      // Adjust these values based on your rocket.png's transparent areas
-      collisionOffsetX: 15, // Pixels to offset from left/right
-      collisionOffsetY: 5,  // Pixels to offset from top/bottom
-      collisionWidthShrink: 30, // Total pixels to shrink width (2 * collisionOffsetX)
-      collisionHeightShrink: 10 // Total pixels to shrink height (2 * collisionOffsetY)
+      // These values are adjusted to make the collision box tighter to the rocket's visual shape
+      collisionOffsetX: 25, // Pixels to offset from left/right (e.g., 25px from each side for a 100px wide image leaves 50px width)
+      collisionOffsetY: 10,  // Pixels to offset from top/bottom (e.g., 10px from each side for a 100px high image leaves 80px height)
+      collisionWidthShrink: 50, // Total pixels to shrink width (2 * collisionOffsetX)
+      collisionHeightShrink: 20 // Total pixels to shrink height (2 * collisionOffsetY)
     };
     let obstacles=[], coins=[];
     let touchStartX=null;
@@ -315,7 +315,8 @@
     function spawnObstacle(){
       const size=72; // Doubled obstacle size
       // Define a specific padding for the obstacle's collision box
-      const obstacleCollisionPadding = 15; // Adjust this value based on your obstacle image's transparent areas
+      // Adjusted for a more circular/central collision area for a 72x72 image
+      const obstacleCollisionPadding = 18; // e.g., 18px from each side for a 72px image leaves 36px center
       obstacles.push({
         x:Math.random()*(window.innerWidth-size), 
         y:-size, 
