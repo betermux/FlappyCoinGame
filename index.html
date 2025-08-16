@@ -47,6 +47,11 @@
     }
     #userPhoto{ width:32px; height:32px; border-radius:50%; object-fit:cover; }
     #userName{ font-weight:600; color:#fff }
+    #userCoins{ 
+        font-weight:600; 
+        color:var(--accent2); /* Use accent color for coins */
+        margin-left: 5px; /* Space between name and coins */
+    }
 
     /* Screens */
     .screen{
@@ -108,6 +113,7 @@
   <div id="userInfo" style="display:none;">
     <img id="userPhoto" alt="" />
     <span id="userName"></span>
+    <span id="userCoins"></span> <!-- Added for displaying user's total coins -->
   </div>
 
   <!-- Home -->
@@ -129,7 +135,7 @@
   <div id="leaderboardScreen" class="screen">
     <div id="boardCard">
       <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 8px;">
-        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Coin)</h2> <!-- CHANGED HERE -->
+        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Coin)</h2>
         <span id="entriesMeta" class="pill">—</span>
       </div>
       <div style="overflow:auto; max-height: 60vh;">
@@ -138,7 +144,7 @@
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Coin (Total)</th> <!-- CHANGED HERE -->
+              <th>Coin (Total)</th> 
               <!-- Removed "Last Played" header -->
             </tr>
           </thead>
@@ -158,7 +164,7 @@
   <script type="module">
     /* ===== Firebase ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-    import { getDatabase, ref, push, set, get, child } 
+    import { getDatabase, ref, get, set, child, runTransaction } 
       from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -178,21 +184,46 @@
     const tg = window.Telegram?.WebApp;
     tg?.expand();
 
-    const user = tg?.initDataUnsafe?.user;
     let currentUser = "guest";
+    let currentUserId = "guest_id"; // Default for non-Telegram users
     let photoUrl = "";
+    let userTotalCoins = 0; // To store the user's total coins
+
+    const user = tg?.initDataUnsafe?.user;
     if (user) {
+      currentUserId = user.id.toString(); // Use Telegram user ID as unique identifier
       currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
       photoUrl = user.photo_url || "";
     }
+
     const userInfo = document.getElementById("userInfo");
     const userNameEl = document.getElementById("userName");
     const userPhotoEl = document.getElementById("userPhoto");
+    const userCoinsEl = document.getElementById("userCoins"); // New element for coins
+
     function showUserBadge(show){
       userInfo.style.display = show ? "flex" : "none";
     }
-    userNameEl.textContent = currentUser;
-    if (photoUrl) userPhotoEl.src = photoUrl;
+
+    // Function to update user badge display
+    async function updateUserInfoDisplay() {
+      userNameEl.textContent = currentUser;
+      if (photoUrl) userPhotoEl.src = photoUrl;
+
+      // Fetch and display user's total coins
+      if (currentUserId !== "guest_id") {
+        const userRef = ref(db, `users/${currentUserId}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          userTotalCoins = snapshot.val().totalCoins || 0;
+        } else {
+          userTotalCoins = 0;
+        }
+      } else {
+        userTotalCoins = 0; // Guests have 0 total coins
+      }
+      userCoinsEl.textContent = `🪙 ${userTotalCoins}`; // Display coins with an emoji
+    }
 
     /* ===== Canvas / Game ===== */
     const canvas = document.getElementById("gameCanvas");
@@ -448,10 +479,30 @@
 
     async function endGame(){
       running=false;
-      // save single session
-      const scoresRef = ref(db, "scores");
-      const newRef = push(scoresRef);
-      await set(newRef, { username: currentUser, score, createdAt: new Date().toISOString() });
+      
+      if (currentUserId !== "guest_id") {
+        const userRef = ref(db, `users/${currentUserId}`);
+        await runTransaction(userRef, (currentData) => {
+          if (currentData) {
+            // User exists, update totalCoins
+            currentData.totalCoins = (currentData.totalCoins || 0) + score;
+            currentData.username = currentUser; // Ensure username is up-to-date
+            currentData.photo_url = photoUrl; // Ensure photo_url is up-to-date
+          } else {
+            // User does not exist, create new entry
+            currentData = {
+              username: currentUser,
+              photo_url: photoUrl,
+              totalCoins: score,
+              createdAt: new Date().toISOString()
+            };
+          }
+          return currentData;
+        });
+        // Update the user badge display after transaction
+        await updateUserInfoDisplay();
+      }
+
       // show aggregated leaderboard
       await showLeaderboard();
       boardScreen.style.display="flex";
@@ -461,39 +512,29 @@
 
     /**
      * Aggregated leaderboard (sum by username)
-     * DB: scores/{id} -> { username, score, createdAt }
-     * UI: one username per row, score = SUM(score)
+     * DB: users/{userId} -> { username, photo_url, totalCoins }
+     * UI: one username per row, score = totalCoins
      */
     async function showLeaderboard(){
-      tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; // Adjusted colspan
-      const snapshot = await get(child(ref(db), "scores"));
+      tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; 
+      const usersRef = ref(db, "users");
+      const snapshot = await get(usersRef);
+      
       if (!snapshot.exists()){
-        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins yet.</td></tr>`; // Adjusted colspan
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins collected yet.</td></tr>`; 
         entriesMeta.textContent = "0 players";
         return;
       }
 
-      // aggregate by username
-      const list = Object.values(snapshot.val()); // [{username, score, createdAt}, ...]
-      const byUser = new Map();
-      for (const row of list){
-        const name = row.username || "guest";
-        const s = Number(row.score)||0;
-        const t = row.createdAt ? new Date(row.createdAt).getTime() : 0;
-        if (!byUser.has(name)){
-          byUser.set(name, { username:name, total:s, last:t });
-        } else {
-          const rec = byUser.get(name);
-          rec.total += s;
-          rec.last = Math.max(rec.last, t); // 'last' is still calculated but not displayed
-        }
-      }
-      const aggregated = Array.from(byUser.values())
-        .sort((a,b)=> b.total - a.total || b.last - a.last);
+      // Get all users and sort by totalCoins
+      const usersList = Object.values(snapshot.val()); // [{username, photo_url, totalCoins}, ...]
+      const sortedUsers = usersList
+        .filter(u => u.totalCoins !== undefined) // Ensure totalCoins exists
+        .sort((a,b)=> b.totalCoins - a.totalCoins); // Sort by totalCoins descending
 
       // render
       tbody.innerHTML = "";
-      aggregated.forEach((u, idx)=>{
+      sortedUsers.forEach((u, idx)=>{
         const tr = document.createElement("tr");
         if (idx===0) tr.classList.add("top1");
         else if (idx===1) tr.classList.add("top2");
@@ -501,15 +542,15 @@
         tr.innerHTML = `
           <td class="rank">${idx+1}</td>
           <td>${u.username}</td>
-          <td class="score">${u.total}</td>
-          <!-- Removed "Last Played" data cell -->
+          <td class="score">${u.totalCoins}</td>
         `;
         tbody.appendChild(tr);
       });
-      entriesMeta.textContent = `${aggregated.length} players`;
+      entriesMeta.textContent = `${sortedUsers.length} players`;
     }
 
-    // Show badge on initial screen
+    // Show badge on initial screen and fetch user's total coins
+    updateUserInfoDisplay(); // Call this to populate the user badge on load
     showUserBadge(true);
   </script>
 </body>
