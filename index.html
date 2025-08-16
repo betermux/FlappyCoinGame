@@ -53,7 +53,7 @@
       background: linear-gradient(180deg, #ffd54a, #ffb300);
       color:#2b1900; font-weight:700; letter-spacing: .3px;
       padding: 12px 18px; border-radius: 12px; font-size: clamp(16px, 4vw, 18px);
-      box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1px #0000001f;
+      box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1f;
       transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
     }
     .btn:hover{ filter:brightness(1.05) }
@@ -122,7 +122,7 @@
               <th>#</th>
               <th>Name</th>
               <th>Score (Total)</th>
-              <th>Last Played</th>
+              <!-- Removed "Last Played" header -->
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
@@ -211,12 +211,20 @@
     let obstacles=[], coins=[];
     let touchStartX=null;
 
-    canvas.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+    canvas.addEventListener("touchstart", e => { 
+      touchStartX = e.touches[0].clientX; 
+      // Immediately set targetX to current touch position for instant follow on touch start
+      rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+    }, {passive:true});
+
+    canvas.addEventListener("touchmove", e => {
+      // Continuously update targetX as finger moves
+      rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+    }, {passive:true});
+
     canvas.addEventListener("touchend", e => {
       if (touchStartX==null) return;
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      // Set targetX directly to the touch release X coordinate for free movement
-      // Ensure targetX keeps the rocket within bounds
+      // Final position update on touch end
       rocket.targetX = Math.max(0, Math.min(e.changedTouches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
       touchStartX=null;
     });
@@ -229,6 +237,9 @@
       const size=44; // Doubled coin size
       coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
     }
+
+    // Define a padding for collision detection to ignore transparent edges
+    const collisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
 
     function loop(t){
       if (!running) return;
@@ -274,17 +285,18 @@
     }
 
     function hit(a,b){
-      // This function checks for bounding box collision.
-      // If you want to make the collision area smaller than the image,
-      // you would need to adjust 'a.w', 'a.h', 'b.w', 'b.h' or add an offset here.
-      // For example, to shrink the rocket's collision box by 10px on each side:
-      // const rocketCollisionX = a.x + 10;
-      // const rocketCollisionY = a.y + 10;
-      // const rocketCollisionW = a.w - 20;
-      // const rocketCollisionH = a.h - 20;
-      // return rocketCollisionX < b.x + b.w && rocketCollisionX + rocketCollisionW > b.x &&
-      //        rocketCollisionY < b.y + b.h && rocketCollisionY + rocketCollisionH > b.y;
-      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      // Apply padding to shrink the collision box for more accurate collision
+      const aX = a.x + collisionPadding;
+      const aY = a.y + collisionPadding;
+      const aW = a.w - (collisionPadding * 2);
+      const aH = a.h - (collisionPadding * 2);
+
+      const bX = b.x + collisionPadding;
+      const bY = b.y + collisionPadding;
+      const bW = b.w - (collisionPadding * 2);
+      const bH = b.h - (collisionPadding * 2);
+
+      return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
     }
 
     /* ===== Screens & Leaderboard ===== */
@@ -348,10 +360,10 @@
      * UI: one username per row, score = SUM(score)
      */
     async function showLeaderboard(){
-      tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; // Adjusted colspan
       const snapshot = await get(child(ref(db), "scores"));
       if (!snapshot.exists()){
-        tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">No scores yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No scores yet.</td></tr>`; // Adjusted colspan
         entriesMeta.textContent = "0 players";
         return;
       }
@@ -385,7 +397,7 @@
           <td class="rank">${idx+1}</td>
           <td>${u.username}</td>
           <td class="score">${u.total}</td>
-          <td><span class="pill">${u.last? new Date(u.last).toLocaleString(): "-"}</span></td>
+          <!-- Removed "Last Played" data cell -->
         `;
         tbody.appendChild(tr);
       });
