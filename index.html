@@ -157,7 +157,18 @@
       box-shadow: 0 4px 12px #ffb30052;
     }
     
-    /* Screens (hidden by default) */
+    /* Game canvas */
+    #gameCanvas { 
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 15;
+    }
+    
+    /* Screens */
     .screen {
       display: none;
       position: fixed;
@@ -172,15 +183,31 @@
       overflow-y: auto;
     }
     
-    /* Game canvas */
-    #gameCanvas { 
-      display: block; 
-      width: 100vw; 
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 5;
+    /* Game start screen */
+    #playScreen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    
+    #startGameBtn {
+      background: linear-gradient(45deg, var(--accent-dark), var(--accent));
+      color: #2b1900;
+      font-weight: bold;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 16px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px #ffb30052;
+      margin-top: 24px;
+      transition: transform 0.1s;
+    }
+    
+    #startGameBtn:active {
+      transform: scale(0.95);
     }
   </style>
 </head>
@@ -234,26 +261,11 @@
     <!-- Game canvas (hidden by default) -->
     <canvas id="gameCanvas"></canvas>
     
-    <!-- Play Screen (hidden by default) -->
+    <!-- Play Screen -->
     <div id="playScreen" class="screen">
-      <div style="display: flex; flex-direction: column; height: 100%;">
-        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-          <h2 style="text-align: center; margin-bottom: 20px;">Ready to Play?</h2>
-          <button id="startGameBtn" style="
-            background: linear-gradient(45deg, var(--accent-dark), var(--accent));
-            color: #2b1900;
-            font-weight: bold;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px #ffb30052;
-          ">
-            START GAME
-          </button>
-        </div>
-      </div>
+      <h2>Rocket Game</h2>
+      <p>Swipe left/right to control the rocket<br>Avoid obstacles and collect coins</p>
+      <button id="startGameBtn">START GAME</button>
     </div>
   </div>
   
@@ -279,37 +291,49 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    /* ===== Game Variables ===== */
+    let currentUser = "Guest";
+    let running = false;
+    let score = 0;
+    let coinsCount = 1250;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Game objects
+    let rocket = { x: 0, y: 0, w: 100, h: 100, targetX: 0 };
+    let obstacles = [];
+    let coins = [];
+    
+    // Assets
+    const rocketImg = new Image();
+    const obstacleImg = new Image();
+    const coinImg = new Image();
+    
+    // Starfield background
+    const stars = [];
+
     /* ===== UI Initialization ===== */
     document.addEventListener('DOMContentLoaded', () => {
+      // Initialize assets
+      rocketImg.src = "assets/rocket.png";
+      obstacleImg.src = "assets/obstacle.png";
+      coinImg.src = "assets/coin.png";
+      
+      // Initialize stars
+      initializeStars();
+      
       // Menu button functionality
-      const menuButtons = document.querySelectorAll('.menuButton');
-      menuButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          // Set all buttons to inactive
-          menuButtons.forEach(btn => btn.classList.remove('active'));
-          // Set clicked button to active
-          button.classList.add('active');
-          
-          const screen = button.getAttribute('data-screen');
-          // Handle screen switching
-          switch(screen) {
-            case 'play':
-              document.getElementById('playScreen').style.display = 'flex';
-              break;
-            default:
-              document.getElementById('playScreen').style.display = 'none';
-          }
-        });
-      });
+      setupMenuButtons();
       
       // Start game button
-      document.getElementById('startGameBtn').addEventListener('click', () => {
-        document.getElementById('playScreen').style.display = 'none';
-        startGame();
-      });
+      document.getElementById('startGameBtn').addEventListener('click', startGame);
       
       // Initialize Telegram user info
       initTelegramUser();
+      
+      // Set up window resize handler
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
     });
 
     /* ===== Telegram user ===== */
@@ -327,23 +351,254 @@
       }
     }
 
-    /* ===== Game Functions ===== */
-    let currentUser = "Guest";
-    let running = false;
-    
-    function startGame() {
-      const canvas = document.getElementById('gameCanvas');
-      canvas.style.display = 'block';
-      
-      // Your existing game initialization code here
-      // ...
-      
-      running = true;
+    /* ===== Menu System ===== */
+    function setupMenuButtons() {
+      const menuButtons = document.querySelectorAll('.menuButton');
+      menuButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          // Set all buttons to inactive
+          menuButtons.forEach(btn => btn.classList.remove('active'));
+          // Set clicked button to active
+          button.classList.add('active');
+          
+          const screen = button.getAttribute('data-screen');
+          
+          // Hide all screens first
+          document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+          canvas.style.display = 'none';
+          
+          // Show selected screen
+          if (screen === 'play') {
+            document.getElementById('playScreen').style.display = 'flex';
+          }
+        });
+      });
     }
 
+    /* ===== Game Functions ===== */
+    function startGame() {
+      // Hide play screen and show canvas
+      document.getElementById('playScreen').style.display = 'none';
+      canvas.style.display = 'block';
+      
+      // Initialize game state
+      score = 0;
+      obstacles = [];
+      coins = [];
+      
+      // Position rocket at bottom center
+      rocket = {
+        x: canvas.width/2 - 50,
+        y: canvas.height - 150,
+        w: 100,
+        h: 100,
+        targetX: canvas.width/2 - 50,
+        speed: 0.15
+      };
+      
+      // Reset coins count display
+      document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
+      
+      // Set up touch controls
+      setupTouchControls();
+      
+      // Start game loop
+      running = true;
+      requestAnimationFrame(gameLoop);
+    }
+    
     function endGame() {
       running = false;
-      document.getElementById('gameCanvas').style.display = 'none';
+      
+      // Show play screen again
+      canvas.style.display = 'none';
+      document.getElementById('playScreen').style.display = 'flex';
+      
+      // Save score to database
+      saveScore();
+    }
+    
+    function initializeStars() {
+      for (let i = 0; i < 80; i++) {
+        stars.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          r: Math.random() * 2 + 0.6,
+          s: 0.5 + Math.random() * 1.6
+        });
+      }
+    }
+    
+    function updateStars() {
+      for (const s of stars) { 
+        s.y += s.s; 
+        if (s.y > canvas.height) { 
+          s.y = -3; 
+          s.x = Math.random() * canvas.width; 
+        } 
+      }
+    }
+    
+    function drawStars() {
+      ctx.fillStyle = "#fff";
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function setupTouchControls() {
+      let touchStartX = null;
+      
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        touchStartX = e.touches[0].clientX;
+        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
+      }, { passive: false });
+      
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
+      }, { passive: false });
+      
+      canvas.addEventListener('touchend', e => {
+        if (touchStartX === null) return;
+        touchStartX = null;
+      }, { passive: false });
+    }
+    
+    function spawnObstacle() {
+      const size = 72;
+      obstacles.push({
+        x: Math.random() * (canvas.width - size),
+        y: -size,
+        w: size,
+        h: size,
+        vy: 3,
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.05
+      });
+    }
+    
+    function spawnCoin() {
+      const size = 44;
+      coins.push({
+        x: Math.random() * (canvas.width - size),
+        y: -size,
+        w: size,
+        h: size,
+        vy: 2
+      });
+    }
+    
+    function gameLoop() {
+      if (!running) return;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Update and draw stars
+      updateStars();
+      drawStars();
+      
+      // Smooth rocket movement
+      rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
+      
+      // Spawn objects
+      if (Math.random() < 0.008) spawnObstacle();
+      if (Math.random() < 0.02) spawnCoin();
+      
+      // Draw and update obstacles
+      for (const o of obstacles) {
+        o.y += o.vy;
+        o.rotation += o.rotationSpeed;
+        
+        if (obstacleImg.complete) {
+          ctx.save();
+          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
+          ctx.rotate(o.rotation);
+          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
+          ctx.restore();
+        }
+      }
+      obstacles = obstacles.filter(o => o.y < canvas.height + o.h + 40);
+      
+      // Draw and update coins
+      for (const c of coins) {
+        c.y += c.vy;
+        if (coinImg.complete) {
+          ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
+        }
+      }
+      coins = coins.filter(c => c.y < canvas.height + c.h + 22);
+      
+      // Draw rocket
+      if (rocketImg.complete) {
+        ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
+      }
+      
+      // Check collisions
+      for (const o of obstacles) {
+        if (checkCollision(rocket, o)) {
+          endGame();
+          return;
+        }
+      }
+      
+      // Check coin collection
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (checkCollision(rocket, coins[i])) {
+          coins.splice(i, 1);
+          score++;
+          coinsCount += 10;
+          document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
+        }
+      }
+      
+      // Draw score
+      ctx.fillStyle = "#eaf2ff";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 12, 28);
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    function checkCollision(a, b) {
+      const aX = a.x + 15;
+      const aY = a.y + 15;
+      const aW = a.w - 30;
+      const aH = a.h - 30;
+      
+      const bX = b.x + 15;
+      const bY = b.y + 15;
+      const bW = b.w - 30;
+      const bH = b.h - 30;
+      
+      return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
+    }
+    
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // Reposition rocket if game is running
+      if (running) {
+        rocket.y = canvas.height - 150;
+        rocket.targetX = Math.min(rocket.targetX, canvas.width - rocket.w);
+        rocket.x = Math.min(rocket.x, canvas.width - rocket.w);
+      }
+    }
+    
+    async function saveScore() {
+      const scoresRef = ref(db, "scores");
+      const newRef = push(scoresRef);
+      await set(newRef, { 
+        username: currentUser, 
+        score, 
+        coins: coinsCount,
+        createdAt: new Date().toISOString() 
+      });
     }
   </script>
 </body>
