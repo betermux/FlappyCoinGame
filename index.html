@@ -158,6 +158,11 @@
     </div>
   </div>
 
+  <!-- HTML Audio Elements added here -->
+  <audio id="bgMusic" src="assets/bgmusic.mp3" loop preload="auto"></audio>
+  <audio id="popSound" src="assets/popsound.mp3" preload="auto"></audio>
+  <!-- End of HTML Audio Elements -->
+
   <!-- Telegram SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -274,6 +279,12 @@
     const coinCollectSound = new Audio('assets/coincollect.mp3');
     coinCollectSound.volume = 0.5; // Adjust volume as needed (0.0 to 1.0)
 
+    // Get references to the HTML Audio Elements
+    const bgMusic = document.getElementById('bgMusic');
+    bgMusic.volume = 0.3; // Adjust volume as needed (0.0 to 1.0)
+
+    const popSound = document.getElementById('popSound');
+    popSound.volume = 0.7; // Adjust volume as needed
 
     let running=false, score=0; // score now represents coins
     // Doubled rocket size, moved up, and added targetX for smooth movement
@@ -474,6 +485,16 @@
     const tbody = document.getElementById("leaderboardBody");
     const entriesMeta = document.getElementById("entriesMeta");
 
+    // Get all buttons to attach the pop sound listener
+    const allButtons = document.querySelectorAll('.btn');
+    allButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            popSound.currentTime = 0; // Rewind to start for immediate playback
+            popSound.play().catch(e => console.error("Error playing pop sound:", e));
+        });
+    });
+
+
     startBtn.addEventListener("click", ()=>{
       // Hide user badge when game starts
       showUserBadge(false);
@@ -485,10 +506,13 @@
       rocket.rotation = 0; // Reset rocket rotation
       rocket.targetRotation = 0; // Reset target rotation
       running=true;
+      bgMusic.play().catch(e => console.error("Error playing background music:", e)); // Start background music
       requestAnimationFrame(loop);
     });
 
     openBoardBtn.addEventListener("click", async ()=>{
+      bgMusic.pause(); // Pause background music if it's playing
+      bgMusic.currentTime = 0; // Rewind music to start
       await showLeaderboard();
       homeScreen.style.display="none";
       boardScreen.style.display="flex";
@@ -497,6 +521,8 @@
     });
 
     backHome.addEventListener("click", ()=>{
+      bgMusic.pause(); // Pause background music if it's playing
+      bgMusic.currentTime = 0; // Rewind music to start
       boardScreen.style.display="none";
       homeScreen.style.display="flex";
       showUserBadge(true);
@@ -505,12 +531,14 @@
     playAgain.addEventListener("click", ()=>{
       boardScreen.style.display="none";
       showUserBadge(false);
-      startBtn.click();
+      startBtn.click(); // This will trigger the startBtn click event, which also starts the music
     });
 
     async function endGame(){
       running=false;
-      
+      bgMusic.pause(); // Stop background music
+      bgMusic.currentTime = 0; // Rewind music to start
+
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
         await runTransaction(userRef, (currentData) => {
