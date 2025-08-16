@@ -25,7 +25,7 @@
   <div id="homeScreen">
     <h1>🚀 Space Rocket</h1>
     <input type="text" id="usernameInput" placeholder="Таны нэр">
-    <button id="startBtn">Start Game</button>
+    <button id="startBtn" disabled>Start Game</button>
   </div>
 
   <!-- Canvas -->
@@ -45,8 +45,9 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-    import { getDatabase, ref, push, set, get, child, remove, update } 
+    import { getDatabase, ref, push, set, get, child, remove, update, query, orderByChild, limitToLast } 
       from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js"; // Authentication нэмсэн
 
     // Firebase config
     const firebaseConfig = {
@@ -61,11 +62,18 @@
     };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app); // Authentication-г эндээс авна
 
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.8;
+
+    // Canvas-ийн хэмжээг динамикаар тохируулах
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight * 0.8;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
 
     // UI
     const homeScreen = document.getElementById("homeScreen");
@@ -81,11 +89,35 @@
     let obstacles = [];
     let coins = [];
     let running = false;
+    let gameSpeed = 1; // Тоглоомын хурдыг нэмэх
+    let lastObstacleTime = 0;
+    let lastCoinTime = 0;
+    const obstacleInterval = 2000; // 2 секунд тутамд саад
+    const coinInterval = 3000; // 3 секунд тутамд зоос
+    let isAdmin = false; // Админы статус
 
     // Assets
     const rocketImg = new Image(); rocketImg.src = "assets/rocket.gif";
     const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.gif";
     const coinImg = new Image(); coinImg.src = "assets/coin.png";
+
+    // Зургуудыг ачаалсны дараа тоглоомыг идэвхжүүлэх
+    let imagesLoaded = 0;
+    const totalImages = 3;
+    function imageLoaded() {
+      imagesLoaded++;
+      if (imagesLoaded === totalImages) {
+        startBtn.disabled = false;
+      }
+    }
+    rocketImg.onload = imageLoaded;
+    obstacleImg.onload = imageLoaded;
+    coinImg.onload = imageLoaded;
+
+    // Хэрэглэгчийн нэрийг цэвэрлэх
+    function sanitizeInput(input) {
+      return input.replace(/[<>&"]/g, "").substring(0, 20); // HTML тэмдэгт устгаж, 20 тэмдэгтээр хязгаарлана
+    }
 
     // Swipe control
     let touchStartX = null;
@@ -93,118 +125,151 @@
     canvas.addEventListener("touchend", e => {
       if (!touchStartX) return;
       let dx = e.changedTouches[0].clientX - touchStartX;
-      if (dx > 50) rocket.x += 50;
-      if (dx < -50) rocket.x -= 50;
+      if (dx > 50) rocket.x = Math.min(canvas.width - rocket.width, rocket.x + 50);
+      if (dx < -50) rocket.x = Math.max(0, rocket.x - 50);
       touchStartX = null;
     });
 
     // Start game
     startBtn.onclick = () => {
-      currentUser = usernameInput.value.trim();
+      currentUser = sanitizeInput(usernameInput.value.trim());
       if (!currentUser) { alert("Нэрээ оруул!"); return; }
-      homeScreen.style.display="none";
-      score = 0; obstacles=[]; coins=[];
-      rocket.x = canvas.width/2-25;
-      rocket.y = canvas.height-100;
+      homeScreen.style.display = "none";
+      score = 0; obstacles = []; coins = [];
+      gameSpeed = 1; // Хурдыг эхний утгадаа буцаана
+      rocket.x = canvas.width / 2 - 25;
+      rocket.y = canvas.height - 100;
       running = true;
       requestAnimationFrame(loop);
     };
 
     function spawnObstacle() {
-      obstacles.push({ x: Math.random()*(canvas.width-40), y:-40, w:40, h:40 });
+      obstacles.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 40, h: 40 });
     }
     function spawnCoin() {
-      coins.push({ x: Math.random()*(canvas.width-20), y:-20, w:20, h:20 });
+      coins.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20 });
     }
 
-    function loop() {
+    function loop(timestamp) {
       if (!running) return;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw rocket
       ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.width, rocket.height);
 
       // Obstacles
-      if (Math.random()<0.02) spawnObstacle();
-      obstacles.forEach(o => { o.y+=3; ctx.drawImage(obstacleImg,o.x,o.y,o.w,o.h); });
-      obstacles = obstacles.filter(o => o.y<canvas.height);
+      if (timestamp - lastObstacleTime > obstacleInterval && Math.random() < 0.02) {
+        spawnObstacle();
+        lastObstacleTime = timestamp;
+      }
+      obstacles.forEach(o => { o.y += 3 * gameSpeed; ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h); });
+      obstacles = obstacles.filter(o => o.y < canvas.height);
 
       // Coins
-      if (Math.random()<0.02) spawnCoin();
-      coins.forEach(c => { c.y+=2; ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); });
-      coins = coins.filter(c => c.y<canvas.height);
+      if (timestamp - lastCoinTime > coinInterval && Math.random() < 0.02) {
+        spawnCoin();
+        lastCoinTime = timestamp;
+      }
+      coins.forEach(c => { c.y += 2 * gameSpeed; ctx.drawImage(coinImg, c.x, c.y, c.w, c.h); });
+      coins = coins.filter(c => c.y < canvas.height);
 
       // Collisions
       for (let o of obstacles) {
-        if (collision(rocket,o)) { endGame(); return; }
+        if (collision(rocket, o)) { endGame(); return; }
       }
-      for (let i=coins.length-1;i>=0;i--) {
-        if (collision(rocket,coins[i])) { score++; coins.splice(i,1); }
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (collision(rocket, coins[i])) {
+          score++;
+          coins.splice(i, 1);
+          if (score % 10 === 0) gameSpeed += 0.1; // 10 оноо бүрт хурд нэмэгдэнэ
+        }
       }
 
       // Score text
-      ctx.fillStyle="white"; ctx.font="20px Arial";
-      ctx.fillText("Оноо: "+score,10,30);
+      ctx.fillStyle = "white";
+      ctx.font = "bold 24px Arial"; // Фонтыг тод болгосон
+      ctx.fillText("Оноо: " + score, 10, 30);
 
       requestAnimationFrame(loop);
     }
 
-    function collision(a,b) {
-      return a.x<a.x+a.width &&
-             a.x+b.w > b.x &&
-             a.y+b.h > b.y &&
-             a.y < b.y+b.h &&
-             a.x+a.width > b.x;
+    function collision(a, b) {
+      return a.x < b.x + b.w &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.h &&
+             a.y + a.height > b.y;
     }
 
     async function endGame() {
       running = false;
-      // save score
-      const scoresRef = ref(db,"scores");
+      // Save high score to localStorage
+      const highScore = localStorage.getItem("highScore") || 0;
+      if (score > highScore) {
+        localStorage.setItem("highScore", score);
+        alert("Шинэ дээд амжилт: " + score);
+      }
+      // Save score to Firebase
+      const scoresRef = ref(db, "scores");
       const newRef = push(scoresRef);
-      await set(newRef,{ username: currentUser, score, createdAt:new Date().toISOString() });
-      // show leaderboard
+      await set(newRef, { username: currentUser, score, createdAt: new Date().toISOString() });
+      // Show leaderboard
       showLeaderboard();
     }
 
     async function showLeaderboard() {
-      leaderboardScreen.style.display="flex";
-      leaderboardBody.innerHTML="";
-      const snapshot = await get(child(ref(db),"scores"));
+      leaderboardScreen.style.display = "flex";
+      leaderboardBody.innerHTML = "";
+      const scoresQuery = query(ref(db, "scores"), orderByChild("score"), limitToLast(10));
+      const snapshot = await get(scoresQuery);
       if (snapshot.exists()) {
-        let data = Object.entries(snapshot.val()).map(([id,val])=>({id,...val}));
-        data.sort((a,b)=>b.score-a.score);
-        data.forEach(row=>{
-          const tr=document.createElement("tr");
-          tr.innerHTML=`<td>${row.username}</td><td>${row.score}</td><td>${new Date(row.createdAt).toLocaleString()}</td>`;
-          if (currentUser==="betermux") {
-            const td=document.createElement("td");
-            td.innerHTML=`<button onclick="updateScore('${row.id}')">Edit</button>
-                          <button onclick="deleteScore('${row.id}')">Delete</button>`;
+        let data = Object.entries(snapshot.val()).map(([id, val]) => ({ id, ...val }));
+        data.sort((a, b) => b.score - a.score);
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${sanitizeInput(row.username)}</td><td>${row.score}</td><td>${new Date(row.createdAt).toLocaleString()}</td>`;
+          if (isAdmin) {
+            const td = document.createElement("td");
+            td.innerHTML = `<button onclick="updateScore('${row.id}')">Edit</button>
+                            <button onclick="deleteScore('${row.id}')">Delete</button>`;
             tr.appendChild(td);
           }
           leaderboardBody.appendChild(tr);
         });
-        if (currentUser==="betermux") adminCol.textContent="Admin";
+        if (isAdmin) adminCol.textContent = "Admin";
       }
     }
 
     window.deleteScore = async (id) => {
-      await remove(ref(db,"scores/"+id));
-      showLeaderboard();
+      if (isAdmin) {
+        await remove(ref(db, "scores/" + id));
+        showLeaderboard();
+      }
     };
     window.updateScore = async (id) => {
-      const newScore=prompt("Шинэ оноо:");
-      if (newScore) {
-        await update(ref(db,"scores/"+id),{score:parseInt(newScore)});
-        showLeaderboard();
+      if (isAdmin) {
+        const newScore = prompt("Шинэ оноо:");
+        if (newScore) {
+          await update(ref(db, "scores/" + id), { score: parseInt(newScore) });
+          showLeaderboard();
+        }
       }
     };
 
     window.restart = () => {
-      leaderboardScreen.style.display="none";
-      homeScreen.style.display="flex";
+      leaderboardScreen.style.display = "none";
+      homeScreen.style.display = "flex";
     };
+
+    // Админы эрхийг шалгах (Жишээ, та өөрийн нэвтрэлтийн системийг ашиглана уу)
+    // async function checkAdmin() {
+    //   try {
+    //     const userCredential = await signInWithEmailAndPassword(auth, "admin@example.com", "adminPassword");
+    //     isAdmin = true;
+    //   } catch (error) {
+    //     isAdmin = false;
+    //   }
+    // }
+    // checkAdmin(); // Нэвтрэлтийг дуудах (та өөрийн UI-гээр сольж болно)
   </script>
 </body>
 </html>
