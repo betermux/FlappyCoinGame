@@ -16,14 +16,20 @@
       --accent2:#58d3ff;
       --menu-bg:#0f1526b3;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0; 
       background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
       color: var(--txt); 
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       overflow: hidden;
       height: 100vh;
+      touch-action: none;
+    }
+    
+    /* Performance optimizations */
+    canvas {
+      will-change: transform;
+      image-rendering: optimizeSpeed;
     }
     
     /* Main container */
@@ -33,7 +39,7 @@
       height: 100vh;
     }
     
-    /* Top bar - shown in menu, hidden during game */
+    /* Top bar */
     #topBar {
       display: flex;
       justify-content: space-between;
@@ -83,7 +89,7 @@
       overflow: hidden;
     }
     
-    /* Rocket display area */
+    /* Rocket display area - made 4x smaller */
     #rocketDisplay {
       flex: 1;
       display: flex;
@@ -93,17 +99,23 @@
     }
     
     #equippedRocket {
-      width: 240px;
-      height: 240px;
+      width: 60px;  /* Reduced from 240px */
+      height: 60px; /* Reduced from 240px */
       background-color: #1e264055;
-      border-radius: 24px;
-      border: 2px dashed #3a4566;
+      border-radius: 12px;
+      border: 1px dashed #3a4566;
       display: flex;
       justify-content: center;
       align-items: center;
     }
     
-    /* Bottom menu - shown in menu, hidden during game */
+    #equippedRocket img {
+      max-width: 80%;
+      max-height: 80%;
+      object-fit: contain;
+    }
+    
+    /* Bottom menu */
     #bottomMenu {
       display: flex;
       justify-content: space-around;
@@ -175,7 +187,7 @@
       overflow-y: auto;
     }
     
-    /* Leaderboard screen styles (keep existing) */
+    /* Leaderboard styles */
     #leaderboardScreen {
       display: flex;
       flex-direction: column;
@@ -242,11 +254,11 @@
 </head>
 <body>
   <div id="app">
-    <!-- Top bar - hidden during game -->
+    <!-- Top bar -->
     <div id="topBar">
       <div id="coinsDisplay">
         <img src="assets/coin.png" alt="Coins">
-        <span id="coinsCount">1,250</span>
+        <span id="coinsCount">0</span>
       </div>
       <div id="userInfo">
         <span id="userName">Guest</span>
@@ -254,7 +266,7 @@
       </div>
     </div>
     
-    <!-- Main content area - hidden during game -->
+    <!-- Main content area -->
     <div id="mainContent">
       <div id="rocketDisplay">
         <div id="equippedRocket">
@@ -263,7 +275,7 @@
       </div>
     </div>
     
-    <!-- Bottom navigation menu - hidden during game -->
+    <!-- Bottom navigation menu -->
     <div id="bottomMenu">
       <button class="menuButton active" data-screen="home">
         <div class="icon">🏠</div>
@@ -308,7 +320,7 @@
       </div>
     </div>
     
-    <!-- Inventory Screen (stub) -->
+    <!-- Inventory Screen -->
     <div id="inventoryScreen" class="screen">
       <h2>Inventory</h2>
       <p>Your collected items will appear here</p>
@@ -317,7 +329,7 @@
       </div>
     </div>
     
-    <!-- Shop Screen (stub) -->
+    <!-- Shop Screen -->
     <div id="shopScreen" class="screen">
       <h2>Shop</h2>
       <p>Items available for purchase</p>
@@ -349,11 +361,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* ===== Game State ===== */
+    /* ===== Game Variables ===== */
     let currentUser = "Guest";
     let running = false;
     let score = 0;
-    let coinsCount = 1250;
+    let coinsCount = 0;
+    let coinsLoaded = false;
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -362,6 +375,8 @@
     let obstacles = [];
     let coins = [];
     const stars = [];
+    let lastFrameTime = 0;
+    const fixedTimeStep = 1000/60; // 60fps
     
     // Assets
     const rocketImg = new Image();
@@ -369,7 +384,7 @@
     const coinImg = new Image();
 
     /* ===== Initialization ===== */
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // Initialize assets
       rocketImg.src = "assets/rocket.png";
       obstacleImg.src = "assets/obstacle.png";
@@ -379,8 +394,12 @@
       initializeStars();
       setupMenuSystem();
       setupGameControls();
-      initTelegramUser();
+      await initTelegramUser();
+      await loadUserCoins(); // Load coins from Firebase
       resizeCanvas();
+      
+      // Start with home screen (fixes leaderboard auto-opening)
+      showScreen('home');
     });
 
     /* ===== Menu System ===== */
@@ -443,7 +462,7 @@
       }
     }
 
-    /* ===== Game Functions ===== */
+    /* ===== Game Functions (Optimized) ===== */
     function setupGameControls() {
       // Window resize handler
       window.addEventListener('resize', resizeCanvas);
@@ -472,15 +491,13 @@
         speed: 0.15
       };
       
-      // Reset coins display
-      document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
-      
       // Set up touch controls
       setupTouchControls();
       
-      // Start game loop
+      // Start optimized game loop
+      lastFrameTime = performance.now();
       running = true;
-      requestAnimationFrame(gameLoop);
+      requestAnimationFrame(optimizedGameLoop);
     }
     
     function endGame() {
@@ -505,43 +522,115 @@
       }
     }
     
-    function updateStars() {
+    /* ===== Optimized Game Loop ===== */
+    function optimizedGameLoop(currentTime) {
+      if (!running) return;
+      
+      const deltaTime = currentTime - lastFrameTime;
+      lastFrameTime = currentTime;
+      
+      // Process multiple fixed updates if needed
+      let numUpdates = 0;
+      while (deltaTime > numUpdates * fixedTimeStep && numUpdates < 10) {
+        updateGame(fixedTimeStep);
+        numUpdates++;
+      }
+      
+      // Smooth rendering
+      renderGame();
+      
+      requestAnimationFrame(optimizedGameLoop);
+    }
+    
+    function updateGame(delta) {
+      // Update stars (background)
       for (const s of stars) { 
-        s.y += s.s; 
+        s.y += s.s * (delta / 16.67); // Normalized to 60fps
         if (s.y > canvas.height) { 
           s.y = -3; 
           s.x = Math.random() * canvas.width; 
         } 
       }
+      
+      // Smooth rocket movement
+      rocket.x += (rocket.targetX - rocket.x) * rocket.speed * (delta / 16.67);
+      
+      // Spawn objects at consistent rates
+      if (Math.random() < 0.008 * (delta / 16.67)) spawnObstacle();
+      if (Math.random() < 0.02 * (delta / 16.67)) spawnCoin();
+      
+      // Update obstacles
+      for (const o of obstacles) {
+        o.y += o.vy * (delta / 16.67);
+        o.rotation += o.rotationSpeed * (delta / 16.67);
+      }
+      obstacles = obstacles.filter(o => o.y < canvas.height + o.h + 40);
+      
+      // Update coins
+      for (const c of coins) {
+        c.y += c.vy * (delta / 16.67);
+      }
+      coins = coins.filter(c => c.y < canvas.height + c.h + 22);
+      
+      // Check collisions
+      for (const o of obstacles) {
+        if (checkCollision(rocket, o)) {
+          endGame();
+          return;
+        }
+      }
+      
+      // Check for collected coins
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (checkCollision(rocket, coins[i])) {
+          coins.splice(i, 1);
+          score++;
+          coinsCount += 10;
+          document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
+          saveUserCoins(); // Save coins to Firebase
+        }
+      }
     }
     
-    function drawStars() {
+    function renderGame() {
+      // Clear canvas efficiently
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw stars (background)
       ctx.fillStyle = "#fff";
       for (const s of stars) {
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
       }
-    }
-    
-    function setupTouchControls() {
-      let touchStartX = null;
       
-      canvas.addEventListener('touchstart', e => {
-        e.preventDefault();
-        touchStartX = e.touches[0].clientX;
-        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
-      }, { passive: false });
+      // Draw obstacles with rotation
+      for (const o of obstacles) {
+        if (obstacleImg.complete) {
+          ctx.save();
+          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
+          ctx.rotate(o.rotation);
+          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
+          ctx.restore();
+        }
+      }
       
-      canvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
-      }, { passive: false });
+      // Draw coins
+      for (const c of coins) {
+        if (coinImg.complete) {
+          ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
+        }
+      }
       
-      canvas.addEventListener('touchend', e => {
-        if (touchStartX === null) return;
-        touchStartX = null;
-      }, { passive: false });
+      // Draw rocket
+      if (rocketImg.complete) {
+        ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
+      }
+      
+      // Draw score
+      ctx.fillStyle = "#eaf2ff";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 12, 28);
     }
     
     function spawnObstacle() {
@@ -568,76 +657,24 @@
       });
     }
     
-    function gameLoop() {
-      if (!running) return;
+    function setupTouchControls() {
+      let touchStartX = null;
       
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        touchStartX = e.touches[0].clientX;
+        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
+      }, { passive: false });
       
-      // Update and draw stars
-      updateStars();
-      drawStars();
+      canvas.addEventListener('touchm ove', e => {
+        e.preventDefault();
+        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
+      }, { passive: false });
       
-      // Smooth rocket movement
-      rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
-      
-      // Spawn objects
-      if (Math.random() < 0.008) spawnObstacle();
-      if (Math.random() < 0.02) spawnCoin();
-      
-      // Draw and update obstacles
-      for (const o of obstacles) {
-        o.y += o.vy;
-        o.rotation += o.rotationSpeed;
-        
-        if (obstacleImg.complete) {
-          ctx.save();
-          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
-          ctx.rotate(o.rotation);
-          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
-          ctx.restore();
-        }
-      }
-      obstacles = obstacles.filter(o => o.y < canvas.height + o.h + 40);
-      
-      // Draw and update coins
-      for (const c of coins) {
-        c.y += c.vy;
-        if (coinImg.complete) {
-          ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
-        }
-      }
-      coins = coins.filter(c => c.y < canvas.height + c.h + 22);
-      
-      // Draw rocket
-      if (rocketImg.complete) {
-        ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
-      }
-      
-      // Check collisions
-      for (const o of obstacles) {
-        if (checkCollision(rocket, o)) {
-          endGame();
-          return;
-        }
-      }
-      
-      // Check coin collection
-      for (let i = coins.length - 1; i >= 0; i--) {
-        if (checkCollision(rocket, coins[i])) {
-          coins.splice(i, 1);
-          score++;
-          coinsCount += 10;
-          document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
-        }
-      }
-      
-      // Draw score
-      ctx.fillStyle = "#eaf2ff";
-      ctx.font = "20px Arial";
-      ctx.fillText("Score: " + score, 12, 28);
-      
-      requestAnimationFrame(gameLoop);
+      canvas.addEventListener('touchend', e => {
+        if (touchStartX === null) return;
+        touchStartX = null;
+      }, { passive: false });
     }
     
     function checkCollision(a, b) {
@@ -667,19 +704,8 @@
       }
     }
     
-    async function saveScore() {
-      const scoresRef = ref(db, "scores");
-      const newRef = push(scoresRef);
-      await set(newRef, { 
-        username: currentUser, 
-        score, 
-        coins: coinsCount,
-        createdAt: new Date().toISOString() 
-      });
-    }
-    
-    /* ===== Telegram user ===== */
-    function initTelegramUser() {
+    /* ===== Firebase Data Handling ===== */
+    async function initTelegramUser() {
       const tg = window.Telegram?.WebApp;
       tg?.expand();
 
@@ -690,6 +716,61 @@
         if (user.photo_url) {
           document.getElementById('userPhoto').src = user.photo_url;
         }
+      }
+    }
+    
+    async function loadUserCoins() {
+      if (!currentUser || coinsLoaded) return;
+      
+      try {
+        const snapshot = await get(child(ref(db), "scores"));
+        if (snapshot.exists()) {
+          const scores = snapshot.val();
+          let totalCoins = 0;
+          
+          for (const key in scores) {
+            const entry = scores[key];
+            if (entry.username === currentUser) {
+              totalCoins += entry.coins || 0;
+            }
+          }
+          
+          coinsCount = totalCoins;
+          document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
+          coinsLoaded = true;
+        }
+      } catch (error) {
+        console.error("Error loading coins:", error);
+      }
+    }
+    
+    async function saveUserCoins() {
+      try {
+        const scoresRef = ref(db, "scores");
+        const newRef = push(scoresRef);
+        await set(newRef, { 
+          username: currentUser, 
+          score, 
+          coins: coinsCount,
+          createdAt: new Date().toISOString() 
+        });
+      } catch (error) {
+        console.error("Error saving coins:", error);
+      }
+    }
+    
+    async function saveScore() {
+      try {
+        const scoresRef = ref(db, "scores");
+        const newRef = push(scoresRef);
+        await set(newRef, { 
+          username: currentUser, 
+          score, 
+          coins: coinsCount,
+          createdAt: new Date().toISOString() 
+        });
+      } catch (error) {
+        console.error("Error saving score:", error);
       }
     }
     
