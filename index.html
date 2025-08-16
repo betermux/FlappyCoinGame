@@ -164,8 +164,8 @@
   <script type="module">
     /* ===== Firebase ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-    import { getDatabase, ref, get, set, child, runTransaction } 
-      from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+    import { getDatabase, ref, get, set, update, child, runTransaction } 
+      from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js"; // Added 'update'
 
     const firebaseConfig = {
       apiKey: "AIzaSyCeD_9k4rfspxHa_T8KAZRhkPT_deFP-OA",
@@ -205,19 +205,35 @@
       userInfo.style.display = show ? "flex" : "none";
     }
 
-    // Function to update user badge display
+    // Function to update user badge display and save/update user data in Firebase
     async function updateUserInfoDisplay() {
       userNameEl.textContent = currentUser;
       if (photoUrl) userPhotoEl.src = photoUrl;
 
-      // Fetch and display user's total coins
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
         const snapshot = await get(userRef);
+        
         if (snapshot.exists()) {
-          userTotalCoins = snapshot.val().totalCoins || 0;
+          // User exists, update their username and photo_url if they've changed
+          const existingData = snapshot.val();
+          userTotalCoins = existingData.totalCoins || 0;
+          
+          if (existingData.username !== currentUser || existingData.photo_url !== photoUrl) {
+            await update(userRef, {
+              username: currentUser,
+              photo_url: photoUrl
+            });
+          }
         } else {
+          // New user, save their initial data
           userTotalCoins = 0;
+          await set(userRef, {
+            username: currentUser,
+            photo_url: photoUrl,
+            totalCoins: 0, // Initialize totalCoins for new users
+            createdAt: new Date().toISOString()
+          });
         }
       } else {
         userTotalCoins = 0; // Guests have 0 total coins
@@ -490,10 +506,10 @@
           if (currentData) {
             // User exists, update totalCoins
             currentData.totalCoins = (currentData.totalCoins || 0) + score;
-            currentData.username = currentUser; // Ensure username is up-to-date
-            currentData.photo_url = photoUrl; // Ensure photo_url is up-to-date
+            // No need to update username/photo_url here, it's handled on initial load/refresh
           } else {
-            // User does not exist, create new entry
+            // This case should ideally be rare if updateUserInfoDisplay runs on load,
+            // but it's a fallback for new users who play before a full page load.
             currentData = {
               username: currentUser,
               photo_url: photoUrl,
@@ -554,7 +570,7 @@
     }
 
     // Show badge on initial screen and fetch user's total coins
-    updateUserInfoDisplay(); // Call this to populate the user badge on load
+    updateUserInfoDisplay(); // Call this to populate the user badge and save/update user data on load
     showUserBadge(true);
   </script>
 </body>
