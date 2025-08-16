@@ -3,333 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Rocket Game</title>
+  <title>Rocket Game · Telegram WebApp + Leaderboard</title>
   <style>
-    :root {
-      --bg:#0b0f1a; 
-      --card:#1a2036; 
-      --card-edge:#242d49;
-      --txt:#eaf2ff; 
-      --muted:#9fb3ce;
-      --accent:#ffd54a; 
-      --accent-dark:#ffb300;
-      --accent2:#58d3ff;
-      --menu-bg:#0f1526b3;
+    :root{
+      --bg:#0b0f1a; --card:#101727cc; --txt:#eaf2ff; --muted:#9fb3ce;
+      --accent:#ffd54a; --accent2:#58d3ff;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; 
-      background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
-      color: var(--txt); 
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      overflow: hidden;
-      height: 100vh;
+    *{box-sizing:border-box}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
+      color:var(--txt); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow:hidden;
     }
-    
-    /* Main container */
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    
-    /* Top bar - shown in menu, hidden during game */
-    #topBar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
+    /* Top-left user badge */
+    #userInfo{
+      position: fixed; top: 12px; left: 12px; z-index: 20;
+      display:flex; align-items:center; gap:10px;
+      padding: 8px 12px; border-radius: 999px;
       background: linear-gradient(180deg, #0f1430aa, #0c1126aa);
+      box-shadow: 0 8px 24px #0006, inset 0 0 0 1f;
       backdrop-filter: blur(8px);
-      z-index: 10;
     }
-    
-    #coinsDisplay {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--card-edge);
-      padding: 8px 12px;
-      border-radius: 20px;
-      font-weight: 600;
-      box-shadow: 0 2px 8px #00000040;
-    }
-    
-    #coinsDisplay img {
-      width: 20px;
-      height: 20px;
-    }
-    
-    #userInfo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    #userPhoto {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--accent);
-    }
-    
-    /* Content area */
-    #mainContent {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      overflow: hidden;
-    }
-    
-    /* Rocket display area */
-    #rocketDisplay {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    
-    #equippedRocket {
-      width: 240px;
-      height: 240px;
-      background-color: #1e264055;
-      border-radius: 24px;
-      border: 2px dashed #3a4566;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    
-    /* Bottom menu - shown in menu, hidden during game */
-    #bottomMenu {
-      display: flex;
-      justify-content: space-around;
-      padding: 12px 0;
-      background: var(--menu-bg);
-      backdrop-filter: blur(8px);
-      border-top: 1px solid #2a3650;
-    }
-    
-    .menuButton {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-    }
-    
-    .menuButton.active {
-      color: var(--accent);
-    }
-    
-    .menuButton .icon {
-      background: var(--card);
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      transition: all 0.2s;
-    }
-    
-    .menuButton.active .icon {
-      background: linear-gradient(45deg, var(--accent-dark), var(--accent));
-      color: #2b1900;
-      box-shadow: 0 4px 12px #ffb30052;
-    }
-    
-    /* Game canvas */
-    #gameCanvas { 
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 15;
-    }
-    
+    #userPhoto{ width:32px; height:32px; border-radius:50%; object-fit:cover; }
+    #userName{ font-weight:600; color:#fff }
+
     /* Screens */
-    .screen {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+    .screen{
+      position: fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:24px; z-index: 15;
       background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
-      backdrop-filter: blur(12px);
-      z-index: 20;
-      padding: 20px;
-      overflow-y: auto;
+      backdrop-filter: blur(6px);
     }
-    
-    /* Leaderboard screen styles (keep existing) */
-    #leaderboardScreen {
-      display: flex;
-      flex-direction: column;
+    #homeScreen h1{
+      margin:0 0 8px; font-size: clamp(24px, 6vw, 42px);
+      letter-spacing: 0.5px;
     }
-    
-    #boardCard {
+    #homeCard{
+      width:min(720px, 92vw);
       background: var(--card);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 16px 48px #0009;
-      flex: 1;
-      overflow-y: auto;
+      border-radius: 18px; padding: 22px;
+      box-shadow: 0 16px 48px #0009, inset 0 0 0 1f;
+      text-align:center;
     }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .sub{ color:var(--muted); margin: 4px 0 18px; }
+    .row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+    .btn{
+      border:0; cursor:pointer;
+      background: linear-gradient(180deg, #ffd54a, #ffb300);
+      color:#2b1900; font-weight:700; letter-spacing: .3px;
+      padding: 12px 18px; border-radius: 12px; font-size: clamp(16px, 4vw, 18px);
+      box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1f;
+      transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
     }
-    
-    th, td {
-      padding: 10px 8px;
-      text-align: left;
-      border-bottom: 1px solid #1d2740;
+    .btn:hover{ filter:brightness(1.05) }
+    .btn:active{ transform: translateY(1px) }
+
+    /* Canvas */
+    #gameCanvas{ display:block; width:100vw; height:100vh; }
+
+    /* Leaderboard */
+    #leaderboardScreen{ display:none }
+    #boardCard{
+      width:min(860px, 96vw);
+      background: var(--card);
+      border-radius: 18px; padding: 18px 14px 14px;
+      box-shadow: 0 16px 48px #0009, inset 0 0 0 1f;
     }
-    
-    th {
-      color: #cfe1ff;
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: .6px;
+    table{ width:100%; border-collapse: collapse; }
+    th, td{ padding: 10px 8px; text-align: left; border-bottom:1px solid #1d2740; }
+    th{ color:#cfe1ff; font-size: 14px; text-transform: uppercase; letter-spacing: .6px; }
+    td.rank{ width:56px; text-align:center; color:#7ec1ff }
+    td.score{ font-weight:700; color:#fff }
+    .pill{
+      padding: 6px 10px; border-radius: 999px; background:#ffffff10; color:#dbe9ff; font-size: 12px;
     }
-    
-    td.rank {
-      width: 56px;
-      text-align: center;
-      color: #7ec1ff;
-    }
-    
-    td.score {
-      font-weight: 700;
-      color: #fff;
-    }
-    
-    .top1 .score { color: #ffd54a }
-    .top2 .score { color: #c0e1ff }
-    .top3 .score { color: #ffc9a8 }
-    
-    .footerRow {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      margin-top: 14px;
-    }
-    
-    .backButton {
-      background: #ffffff14;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      padding: 12px 18px;
-      cursor: pointer;
-    }
+    .top1 .score{ color:#ffd54a }
+    .top2 .score{ color:#c0e1ff }
+    .top3 .score{ color:#ffc9a8 }
+
+    .footerRow{ display:flex; justify-content:space-between; gap:8px; margin-top:14px }
+    .ghost{ background:#ffffff14; color:#fff }
   </style>
 </head>
 <body>
-  <div id="app">
-    <!-- Top bar - hidden during game -->
-    <div id="topBar">
-      <div id="coinsDisplay">
-        <img src="assets/coin.png" alt="Coins">
-        <span id="coinsCount">1,250</span>
-      </div>
-      <div id="userInfo">
-        <span id="userName">Guest</span>
-        <img id="userPhoto" src="https://placehold.co/100x100" alt="User">
-      </div>
-    </div>
-    
-    <!-- Main content area - hidden during game -->
-    <div id="mainContent">
-      <div id="rocketDisplay">
-        <div id="equippedRocket">
-          <img src="assets/rocket.png" alt="Equipped Rocket">
-        </div>
+  <!-- Telegram user badge (visible on home & leaderboard) -->
+  <div id="userInfo" style="display:none;">
+    <img id="userPhoto" alt="" />
+    <span id="userName"></span>
+  </div>
+
+  <!-- Home -->
+  <div id="homeScreen" class="screen">
+    <div id="homeCard">
+      <h1>🚀 Space Rocket</h1>
+      <div class="sub">Swipe left/right to control, avoid obstacles and collect <span style="color:#58d3ff">coins</span>!</div>
+      <div class="row">
+        <button id="startBtn" class="btn">Start Game</button>
+        <button id="openBoardBtn" class="btn ghost">Leaderboard</button>
       </div>
     </div>
-    
-    <!-- Bottom navigation menu - hidden during game -->
-    <div id="bottomMenu">
-      <button class="menuButton active" data-screen="home">
-        <div class="icon">🏠</div>
-        <span>Home</span>
-      </button>
-      <button class="menuButton" data-screen="shop">
-        <div class="icon">🚀</div>
-        <span>Play</span>
-      </button>
-      <button class="menuButton" data-screen="inventory">
-        <div class="icon">🎒</div>
-        <span>Items</span>
-      </button>
-      <button class="menuButton" data-screen="leaderboard">
-        <div class="icon">🏆</div>
-        <span>Top</span>
-      </button>
-    </div>
-    
-    <!-- Game canvas (hidden by default) -->
-    <canvas id="gameCanvas"></canvas>
-    
-    <!-- Leaderboard Screen -->
-    <div id="leaderboardScreen" class="screen">
-      <div id="boardCard">
-        <h2>🏆 Leaderboard</h2>
+  </div>
+
+  <!-- Game canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Leaderboard -->
+  <div id="leaderboardScreen" class="screen">
+    <div id="boardCard">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 8px;">
+        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Score)</h2>
+        <span id="entriesMeta" class="pill">—</span>
+      </div>
+      <div style="overflow:auto; max-height: 60vh;">
         <table>
           <thead>
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Score</th>
+              <th>Score (Total)</th>
+              <!-- Removed "Last Played" header -->
             </tr>
           </thead>
-          <tbody id="leaderboardBody">
-            <!-- Filled dynamically -->
-          </tbody>
+          <tbody id="leaderboardBody"></tbody>
         </table>
       </div>
       <div class="footerRow">
-        <button id="backHome" class="backButton">⬅ Back</button>
-      </div>
-    </div>
-    
-    <!-- Inventory Screen (stub) -->
-    <div id="inventoryScreen" class="screen">
-      <h2>Inventory</h2>
-      <p>Your collected items will appear here</p>
-      <div class="footerRow">
-        <button class="backButton" data-screen="home">⬅ Back</button>
-      </div>
-    </div>
-    
-    <!-- Shop Screen (stub) -->
-    <div id="shopScreen" class="screen">
-      <h2>Shop</h2>
-      <p>Items available for purchase</p>
-      <div class="footerRow">
-        <button class="backButton" data-screen="home">⬅ Back</button>
+        <button id="backHome" class="btn ghost">⬅ Home</button>
+        <button id="playAgain" class="btn">🔄 Play Again</button>
       </div>
     </div>
   </div>
-  
+
   <!-- Telegram SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  
+
   <script type="module">
     /* ===== Firebase ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
@@ -349,410 +157,255 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* ===== Game State ===== */
-    let currentUser = "Guest";
-    let running = false;
-    let score = 0;
-    let coinsCount = 1250;
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Game objects
-    let rocket = { x: 0, y: 0, w: 100, h: 100, targetX: 0 };
-    let obstacles = [];
-    let coins = [];
-    const stars = [];
-    
-    // Assets
-    const rocketImg = new Image();
-    const obstacleImg = new Image();
-    const coinImg = new Image();
+    /* ===== Telegram user ===== */
+    const tg = window.Telegram?.WebApp;
+    tg?.expand();
 
-    /* ===== Initialization ===== */
-    document.addEventListener('DOMContentLoaded', () => {
-      // Initialize assets
-      rocketImg.src = "assets/rocket.png";
-      obstacleImg.src = "assets/obstacle.png";
-      coinImg.src = "assets/coin.png";
-      
-      // Initialize game elements
-      initializeStars();
-      setupMenuSystem();
-      setupGameControls();
-      initTelegramUser();
-      resizeCanvas();
-    });
+    const user = tg?.initDataUnsafe?.user;
+    let currentUser = "guest";
+    let photoUrl = "";
+    if (user) {
+      currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
+      photoUrl = user.photo_url || "";
+    }
+    const userInfo = document.getElementById("userInfo");
+    const userNameEl = document.getElementById("userName");
+    const userPhotoEl = document.getElementById("userPhoto");
+    function showUserBadge(show){
+      userInfo.style.display = show ? "flex" : "none";
+    }
+    userNameEl.textContent = currentUser;
+    if (photoUrl) userPhotoEl.src = photoUrl;
 
-    /* ===== Menu System ===== */
-    function setupMenuSystem() {
-      // Menu buttons
-      const menuButtons = document.querySelectorAll('.menuButton');
-      menuButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const screen = button.getAttribute('data-screen');
-          
-          // Highlight active button
-          menuButtons.forEach(btn => btn.classList.remove('active'));
-          button.classList.add('active');
-          
-          // Handle screen transitions
-          if (screen === 'shop') {
-            // Play button clicked - start game immediately
-            startGame();
-          } else {
-            // Show the selected screen
-            showScreen(screen);
-          }
-        });
-      });
-      
-      // Back buttons
-      document.querySelectorAll('.backButton').forEach(button => {
-        button.addEventListener('click', () => {
-          const target = button.getAttribute('data-screen') || 'home';
-          showScreen(target);
-          
-          // Update menu button states
-          menuButtons.forEach(btn => btn.classList.remove('active'));
-          document.querySelector(`.menuButton[data-screen="${target}"]`).classList.add('active');
-        });
-      });
-    }
-    
-    function showScreen(screenName) {
-      // Hide all screens and show requested one
-      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-      document.getElementById('topBar').style.display = 'flex';
-      document.getElementById('mainContent').style.display = 'flex';
-      document.getElementById('bottomMenu').style.display = 'flex';
-      
-      if (screenName === 'leaderboard') {
-        document.getElementById('leaderboardScreen').style.display = 'flex';
-        showLeaderboard();
-      } 
-      else if (screenName === 'inventory') {
-        document.getElementById('inventoryScreen').style.display = 'flex';
-      }
-      else if (screenName === 'shop') {
-        document.getElementById('shopScreen').style.display = 'flex';
-      }
-      else {
-        // Default home screen
-        menuButtons.forEach(btn => btn.classList.remove('active'));
-        document.querySelector('.menuButton[data-screen="home"]').classList.add('active');
-      }
-    }
-
-    /* ===== Game Functions ===== */
-    function setupGameControls() {
-      // Window resize handler
-      window.addEventListener('resize', resizeCanvas);
-    }
-    
-    function startGame() {
-      // Hide menu UI and show canvas
-      document.getElementById('topBar').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'none';
-      document.getElementById('bottomMenu').style.display = 'none';
-      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-      canvas.style.display = 'block';
-      
-      // Initialize game state
-      score = 0;
-      obstacles = [];
-      coins = [];
-      
-      // Position rocket at bottom center
-      rocket = {
-        x: canvas.width/2 - 50,
-        y: canvas.height - 150,
-        w: 100,
-        h: 100,
-        targetX: canvas.width/2 - 50,
-        speed: 0.15
-      };
-      
-      // Reset coins display
-      document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
-      
-      // Set up touch controls
-      setupTouchControls();
-      
-      // Start game loop
-      running = true;
-      requestAnimationFrame(gameLoop);
-    }
-    
-    function endGame() {
-      running = false;
-      
-      // Show menu UI again
-      canvas.style.display = 'none';
-      showScreen('home');
-      
-      // Save score to database
-      saveScore();
-    }
-    
-    function initializeStars() {
-      for (let i = 0; i < 80; i++) {
-        stars.push({
-          x: Math.random() * window.innerWidth,
-          y: Math.random() * window.innerHeight,
-          r: Math.random() * 2 + 0.6,
-          s: 0.5 + Math.random() * 1.6
-        });
-      }
-    }
-    
-    function updateStars() {
-      for (const s of stars) { 
-        s.y += s.s; 
-        if (s.y > canvas.height) { 
-          s.y = -3; 
-          s.x = Math.random() * canvas.width; 
-        } 
-      }
-    }
-    
-    function drawStars() {
-      ctx.fillStyle = "#fff";
-      for (const s of stars) {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    
-    function setupTouchControls() {
-      let touchStartX = null;
-      
-      canvas.addEventListener('touchstart', e => {
-        e.preventDefault();
-        touchStartX = e.touches[0].clientX;
-        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
-      }, { passive: false });
-      
-      canvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, canvas.width - rocket.w));
-      }, { passive: false });
-      
-      canvas.addEventListener('touchend', e => {
-        if (touchStartX === null) return;
-        touchStartX = null;
-      }, { passive: false });
-    }
-    
-    function spawnObstacle() {
-      const size = 72;
-      obstacles.push({
-        x: Math.random() * (canvas.width - size),
-        y: -size,
-        w: size,
-        h: size,
-        vy: 3,
-        rotation: 0,
-        rotationSpeed: (Math.random() - 0.5) * 0.05
-      });
-    }
-    
-    function spawnCoin() {
-      const size = 44;
-      coins.push({
-        x: Math.random() * (canvas.width - size),
-        y: -size,
-        w: size,
-        h: size,
-        vy: 2
-      });
-    }
-    
-    function gameLoop() {
-      if (!running) return;
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Update and draw stars
-      updateStars();
-      drawStars();
-      
-      // Smooth rocket movement
-      rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
-      
-      // Spawn objects
-      if (Math.random() < 0.008) spawnObstacle();
-      if (Math.random() < 0.02) spawnCoin();
-      
-      // Draw and update obstacles
-      for (const o of obstacles) {
-        o.y += o.vy;
-        o.rotation += o.rotationSpeed;
-        
-        if (obstacleImg.complete) {
-          ctx.save();
-          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
-          ctx.rotate(o.rotation);
-          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
-          ctx.restore();
-        }
-      }
-      obstacles = obstacles.filter(o => o.y < canvas.height + o.h + 40);
-      
-      // Draw and update coins
-      for (const c of coins) {
-        c.y += c.vy;
-        if (coinImg.complete) {
-          ctx.drawImage(coinImg, c.x, c.y, c.w, c.h);
-        }
-      }
-      coins = coins.filter(c => c.y < canvas.height + c.h + 22);
-      
-      // Draw rocket
-      if (rocketImg.complete) {
-        ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
-      }
-      
-      // Check collisions
-      for (const o of obstacles) {
-        if (checkCollision(rocket, o)) {
-          endGame();
-          return;
-        }
-      }
-      
-      // Check coin collection
-      for (let i = coins.length - 1; i >= 0; i--) {
-        if (checkCollision(rocket, coins[i])) {
-          coins.splice(i, 1);
-          score++;
-          coinsCount += 10;
-          document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
-        }
-      }
-      
-      // Draw score
-      ctx.fillStyle = "#eaf2ff";
-      ctx.font = "20px Arial";
-      ctx.fillText("Score: " + score, 12, 28);
-      
-      requestAnimationFrame(gameLoop);
-    }
-    
-    function checkCollision(a, b) {
-      const padding = 15;
-      const aX = a.x + padding;
-      const aY = a.y + padding;
-      const aW = a.w - (padding * 2);
-      const aH = a.h - (padding * 2);
-      
-      const bX = b.x + padding;
-      const bY = b.y + padding;
-      const bW = b.w - (padding * 2);
-      const bH = b.h - (padding * 2);
-      
-      return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
-    }
-    
-    function resizeCanvas() {
+    /* ===== Canvas / Game ===== */
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    function resizeCanvas(){
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      
-      if (running) {
-        // Reposition rocket if game is running
-        rocket.y = canvas.height - 150;
-        rocket.targetX = Math.min(rocket.targetX, canvas.width - rocket.w);
-        rocket.x = Math.min(rocket.x, canvas.width - rocket.w);
-      }
     }
-    
-    async function saveScore() {
+
+    // parallax stars
+    const stars = [];
+    for (let i=0;i<80;i++){
+      stars.push({x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight, r:Math.random()*2+0.6, s:0.5+Math.random()*1.6});
+    }
+    function updateStars(){
+      for (const s of stars){ s.y += s.s; if (s.y>window.innerHeight){ s.y=-3; s.x=Math.random()*window.innerWidth; } }
+    }
+    function drawStars(){
+      ctx.fillStyle="#fff";
+      for (const s of stars){ ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); }
+    }
+
+    // assets
+    const rocketImg = new Image(); rocketImg.src = "assets/rocket.png";
+    const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.png";
+    const coinImg = new Image(); coinImg.src = "assets/coin.png";
+
+    let running=false, score=0;
+    // Doubled rocket size, moved up, and added targetX for smooth movement
+    let rocket = { x: window.innerWidth/2-50, y: window.innerHeight-200, w: 100, h: 100, targetX: window.innerWidth/2-50, speed: 0.15 };
+    let obstacles=[], coins=[];
+    let touchStartX=null;
+
+    canvas.addEventListener("touchstart", e => { 
+      touchStartX = e.touches[0].clientX; 
+      // Immediately set targetX to current touch position for instant follow on touch start
+      rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+    }, {passive:true});
+
+    canvas.addEventListener("touchmove", e => {
+      // Continuously update targetX as finger moves
+      rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+    }, {passive:true});
+
+    canvas.addEventListener("touchend", e => {
+      if (touchStartX==null) return;
+      // Final position update on touch end
+      rocket.targetX = Math.max(0, Math.min(e.changedTouches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+      touchStartX=null;
+    });
+
+    function spawnObstacle(){
+      const size=72; // Doubled obstacle size
+      obstacles.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:3, rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05 }); // Added rotation properties
+    }
+    function spawnCoin(){
+      const size=44; // Doubled coin size
+      coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
+    }
+
+    // Define a padding for collision detection to ignore transparent edges
+    const collisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
+
+    function loop(t){
+      if (!running) return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // bg
+      updateStars(); drawStars();
+
+      // Smooth rocket movement
+      rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
+
+      // spawn
+      if (Math.random()<0.008) spawnObstacle(); // Reduced obstacle spawn rate
+      if (Math.random()<0.02) spawnCoin();
+
+      // draw obstacles with rotation
+      for (const o of obstacles){ 
+        o.y+=o.vy; 
+        o.rotation += o.rotationSpeed; // Update rotation
+        if (obstacleImg.complete) {
+          ctx.save(); // Save current canvas state
+          ctx.translate(o.x + o.w / 2, o.y + o.h / 2); // Move origin to center of obstacle
+          ctx.rotate(o.rotation); // Rotate
+          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h); // Draw image centered
+          ctx.restore(); // Restore canvas state
+        }
+      }
+      obstacles = obstacles.filter(o=>o.y<window.innerHeight+o.h+40); // Adjusted filter for larger obstacles
+
+      // draw coins
+      for (const c of coins){ c.y+=c.vy; if (coinImg.complete) ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); }
+      coins = coins.filter(c=>c.y<window.innerHeight+c.h+22); // Adjusted filter for larger coins
+
+      if (rocketImg.complete) ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
+
+      // collisions
+      for (const o of obstacles){ if (hit(rocket,o)){ return endGame(); } }
+      for (let i=coins.length-1;i>=0;i--){ if (hit(rocket,coins[i])){ score++; coins.splice(i,1); } }
+
+      // HUD
+      ctx.fillStyle="#eaf2ff"; ctx.font="20px Arial"; ctx.fillText("Score: "+score, 12, 28);
+
+      requestAnimationFrame(loop);
+    }
+
+    function hit(a,b){
+      // Apply padding to shrink the collision box for more accurate collision
+      const aX = a.x + collisionPadding;
+      const aY = a.y + collisionPadding;
+      const aW = a.w - (collisionPadding * 2);
+      const aH = a.h - (collisionPadding * 2);
+
+      const bX = b.x + collisionPadding;
+      const bY = b.y + collisionPadding;
+      const bW = b.w - (collisionPadding * 2);
+      const bH = b.h - (collisionPadding * 2);
+
+      return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
+    }
+
+    /* ===== Screens & Leaderboard ===== */
+    const homeScreen = document.getElementById("homeScreen");
+    const boardScreen = document.getElementById("leaderboardScreen");
+    const startBtn = document.getElementById("startBtn");
+    const openBoardBtn = document.getElementById("openBoardBtn");
+    const backHome = document.getElementById("backHome");
+    const playAgain = document.getElementById("playAgain");
+    const tbody = document.getElementById("leaderboardBody");
+    const entriesMeta = document.getElementById("entriesMeta");
+
+    startBtn.addEventListener("click", ()=>{
+      // Hide user badge when game starts
+      showUserBadge(false);
+      homeScreen.style.display="none";
+      score=0; obstacles.length=0; coins.length=0;
+      rocket.x = window.innerWidth/2-rocket.w/2; // Center rocket initially
+      rocket.targetX = rocket.x; // Set targetX to current position
+      rocket.y = window.innerHeight-200; // Adjusted rocket initial Y position
+      running=true;
+      requestAnimationFrame(loop);
+    });
+
+    openBoardBtn.addEventListener("click", async ()=>{
+      await showLeaderboard();
+      homeScreen.style.display="none";
+      boardScreen.style.display="flex";
+      // Show badge on leaderboard
+      showUserBadge(true);
+    });
+
+    backHome.addEventListener("click", ()=>{
+      boardScreen.style.display="none";
+      homeScreen.style.display="flex";
+      showUserBadge(true);
+    });
+
+    playAgain.addEventListener("click", ()=>{
+      boardScreen.style.display="none";
+      showUserBadge(false);
+      startBtn.click();
+    });
+
+    async function endGame(){
+      running=false;
+      // save single session
       const scoresRef = ref(db, "scores");
       const newRef = push(scoresRef);
-      await set(newRef, { 
-        username: currentUser, 
-        score, 
-        coins: coinsCount,
-        createdAt: new Date().toISOString() 
-      });
+      await set(newRef, { username: currentUser, score, createdAt: new Date().toISOString() });
+      // show aggregated leaderboard
+      await showLeaderboard();
+      boardScreen.style.display="flex";
+      // Show badge again after game ends
+      showUserBadge(true);
     }
-    
-    /* ===== Telegram user ===== */
-    function initTelegramUser() {
-      const tg = window.Telegram?.WebApp;
-      tg?.expand();
 
-      const user = tg?.initDataUnsafe?.user;
-      if (user) {
-        currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
-        document.getElementById('userName').textContent = currentUser;
-        if (user.photo_url) {
-          document.getElementById('userPhoto').src = user.photo_url;
+    /**
+     * Aggregated leaderboard (sum by username)
+     * DB: scores/{id} -> { username, score, createdAt }
+     * UI: one username per row, score = SUM(score)
+     */
+    async function showLeaderboard(){
+      tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; // Adjusted colspan
+      const snapshot = await get(child(ref(db), "scores"));
+      if (!snapshot.exists()){
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No scores yet.</td></tr>`; // Adjusted colspan
+        entriesMeta.textContent = "0 players";
+        return;
+      }
+
+      // aggregate by username
+      const list = Object.values(snapshot.val()); // [{username, score, createdAt}, ...]
+      const byUser = new Map();
+      for (const row of list){
+        const name = row.username || "guest";
+        const s = Number(row.score)||0;
+        const t = row.createdAt ? new Date(row.createdAt).getTime() : 0;
+        if (!byUser.has(name)){
+          byUser.set(name, { username:name, total:s, last:t });
+        } else {
+          const rec = byUser.get(name);
+          rec.total += s;
+          rec.last = Math.max(rec.last, t); // 'last' is still calculated but not displayed
         }
       }
+      const aggregated = Array.from(byUser.values())
+        .sort((a,b)=> b.total - a.total || b.last - a.last);
+
+      // render
+      tbody.innerHTML = "";
+      aggregated.forEach((u, idx)=>{
+        const tr = document.createElement("tr");
+        if (idx===0) tr.classList.add("top1");
+        else if (idx===1) tr.classList.add("top2");
+        else if (idx===2) tr.classList.add("top3");
+        tr.innerHTML = `
+          <td class="rank">${idx+1}</td>
+          <td>${u.username}</td>
+          <td class="score">${u.total}</td>
+          <!-- Removed "Last Played" data cell -->
+        `;
+        tbody.appendChild(tr);
+      });
+      entriesMeta.textContent = `${aggregated.length} players`;
     }
-    
-    /* ===== Leaderboard ===== */
-    async function showLeaderboard() {
-      const tbody = document.getElementById('leaderboardBody');
-      tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #cfe1ff; text-align: center;">Loading...</td></tr>';
-      
-      try {
-        const snapshot = await get(child(ref(db), "scores"));
-        if (!snapshot.exists()) {
-          tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #cfe1ff; text-align: center;">No scores yet</td></tr>';
-          return;
-        }
-        
-        // Aggregate scores by user
-        const scoresByUser = new Map();
-        const scores = snapshot.val();
-        
-        for (const key in scores) {
-          const entry = scores[key];
-          const username = entry.username || "Guest";
-          
-          if (!scoresByUser.has(username)) {
-            scoresByUser.set(username, {
-              score: entry.score || 0,
-              coins: entry.coins || 0
-            });
-          } else {
-            const current = scoresByUser.get(username);
-            current.score += entry.score || 0;
-            current.coins += entry.coins || 0;
-          }
-        }
-        
-        // Sort by score (descending)
-        const sorted = Array.from(scoresByUser.entries())
-          .sort((a, b) => b[1].score - a[1].score);
-        
-        // Populate table
-        tbody.innerHTML = '';
-        sorted.forEach(([username, data], index) => {
-          const row = document.createElement('tr');
-          if (index === 0) row.classList.add('top1');
-          if (index === 1) row.classList.add('top2');
-          if (index === 2) row.classList.add('top3');
-          
-          row.innerHTML = `
-            <td class="rank">${index + 1}</td>
-            <td>${username}</td>
-            <td class="score">${data.score}</td>
-          `;
-          tbody.appendChild(row);
-        });
-        
-      } catch (error) {
-        console.error("Error loading leaderboard:", error);
-        tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #ff6b6b; text-align: center;">Error loading leaderboard</td></tr>';
-      }
-    }
-    
-    // Initialize menu buttons reference for global access
-    const menuButtons = document.querySelectorAll('.menuButton');
+
+    // Show badge on initial screen
+    showUserBadge(true);
   </script>
 </body>
 </html>
