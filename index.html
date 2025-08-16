@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Rocket Game · Telegram WebApp + Leaderboard</title>
+  <!-- Google Fonts - Press Start 2P for pixel font -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root{
       --bg:#0b0f1a; --card:#101727cc; --txt:#eaf2ff; --muted:#9fb3ce;
@@ -12,9 +14,28 @@
     *{box-sizing:border-box}
     body{
       margin:0; background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
-      color:var(--txt); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--txt); 
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; /* Default for UI elements */
       overflow:hidden;
     }
+    /* Apply pixel font to specific elements if desired, or globally */
+    h1, h2, .btn, th, td.score, #gameCanvas + script + script { /* Targeting elements that might use the pixel font */
+        font-family: 'Press Start 2P', cursive, monospace;
+    }
+    /* Adjust font size for pixel font if it looks too small */
+    #homeScreen h1 {
+        font-size: clamp(20px, 5vw, 36px); /* Slightly smaller for pixel font */
+    }
+    .btn {
+        font-size: clamp(14px, 3.5vw, 16px); /* Slightly smaller for pixel font */
+    }
+    th {
+        font-size: 12px; /* Adjust for pixel font readability */
+    }
+    td.score {
+        font-size: 16px; /* Adjust for pixel font readability */
+    }
+
     /* Top-left user badge */
     #userInfo{
       position: fixed; top: 12px; left: 12px; z-index: 20;
@@ -34,10 +55,6 @@
       background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
       backdrop-filter: blur(6px);
     }
-    #homeScreen h1{
-      margin:0 0 8px; font-size: clamp(24px, 6vw, 42px);
-      letter-spacing: 0.5px;
-    }
     #homeCard{
       width:min(720px, 92vw);
       background: var(--card);
@@ -52,7 +69,7 @@
       border:0; cursor:pointer;
       background: linear-gradient(180deg, #ffd54a, #ffb300);
       color:#2b1900; font-weight:700; letter-spacing: .3px;
-      padding: 12px 18px; border-radius: 12px; font-size: clamp(16px, 4vw, 18px);
+      padding: 12px 18px; border-radius: 12px; 
       box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1f;
       transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
     }
@@ -72,7 +89,7 @@
     }
     table{ width:100%; border-collapse: collapse; }
     th, td{ padding: 10px 8px; text-align: left; border-bottom:1px solid #1d2740; }
-    th{ color:#cfe1ff; font-size: 14px; text-transform: uppercase; letter-spacing: .6px; }
+    th{ color:#cfe1ff; text-transform: uppercase; letter-spacing: .6px; }
     td.rank{ width:56px; text-align:center; color:#7ec1ff }
     td.score{ font-weight:700; color:#fff }
     .pill{
@@ -121,7 +138,7 @@
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Score (Total)</th>
+              <th>Coin (Total)</th> <!-- Changed "Score (Total)" to "Coin (Total)" -->
               <!-- Removed "Last Played" header -->
             </tr>
           </thead>
@@ -205,7 +222,7 @@
     const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.png";
     const coinImg = new Image(); coinImg.src = "assets/coin.png";
 
-    let running=false, score=0;
+    let running=false, score=0; // score now represents coins
     // Doubled rocket size, moved up, and added targetX for smooth movement
     // Added rotation properties to rocket
     let rocket = { 
@@ -275,7 +292,15 @@
     }
     function spawnCoin(){
       const size=44; // Doubled coin size
-      coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
+      coins.push({
+        x:Math.random()*(window.innerWidth-size), 
+        y:-size, 
+        w:size, 
+        h:size, 
+        vy:2,
+        alpha: 1, // Initial opacity for animation
+        collected: false // Flag for collection animation
+      });
     }
 
     // Define a padding for collision detection to ignore transparent edges of the rocket
@@ -311,9 +336,25 @@
       }
       obstacles = obstacles.filter(o=>o.y<window.innerHeight+o.h+40); // Adjusted filter for larger obstacles
 
-      // draw coins
-      for (const c of coins){ c.y+=c.vy; if (coinImg.complete) ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); }
-      coins = coins.filter(c=>c.y<window.innerHeight+c.h+22); // Adjusted filter for larger coins
+      // draw coins and handle collection animation
+      for (const c of coins){ 
+        if (!c.collected) {
+          c.y+=c.vy; 
+        } else {
+          // If collected, fade out
+          c.alpha -= 0.05; // Adjust fade speed
+          if (c.alpha < 0) c.alpha = 0; // Ensure it doesn't go below 0
+        }
+
+        if (coinImg.complete && c.alpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = c.alpha; // Apply current alpha
+          ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); 
+          ctx.restore();
+        }
+      }
+      // Filter out coins that are off-screen OR have fully faded out
+      coins = coins.filter(c => c.y < window.innerHeight + c.h + 22 && c.alpha > 0); 
 
       // Draw rocket with rotation
       if (rocketImg.complete) {
@@ -326,10 +367,19 @@
 
       // collisions
       for (const o of obstacles){ if (hit(rocket,o)){ return endGame(); } }
-      for (let i=coins.length-1;i>=0;i--){ if (hit(rocket,coins[i])){ score++; coins.splice(i,1); } }
+      for (let i=coins.length-1;i>=0;i--){ 
+        // Only check collision for coins that haven't been collected yet
+        if (!coins[i].collected && hit(rocket,coins[i])){ 
+          score++; 
+          coins[i].collected = true; // Mark as collected to start fade-out
+          // coins.splice(i,1); // DO NOT splice immediately for animation
+        } 
+      }
 
       // HUD
-      ctx.fillStyle="#eaf2ff"; ctx.font="20px Arial"; ctx.fillText("Score: "+score, 12, 28);
+      ctx.fillStyle="#eaf2ff"; 
+      ctx.font="20px 'Press Start 2P'"; // Apply pixel font to HUD
+      ctx.fillText("Coin: "+score, 12, 28); // Changed "Score:" to "Coin:"
 
       requestAnimationFrame(loop);
     }
@@ -342,7 +392,7 @@
       const aH = a.h - (rocketCollisionPadding * 2);
 
       // Apply padding to shrink the collision box for the obstacle (b)
-      // Use b.collisionPadding if available, otherwise default to 0 or a small value
+      // Use b.collisionPadding if available, otherwise default to 0 for coins (no padding)
       const bPadding = b.collisionPadding !== undefined ? b.collisionPadding : 0; 
       const bX = b.x + bPadding;
       const bY = b.y + bPadding;
