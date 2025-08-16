@@ -267,7 +267,7 @@
       coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
     }
 
-    // Define a padding for collision detection to ignore transparent edges of the rocket
+    // Define a padding for collision detection to ignore transparent edges
     const collisionPadding = 15; // Adjust this value as needed (e.g., 10-20px)
 
     function loop(t){
@@ -324,17 +324,16 @@
     }
 
     function hit(a,b){
-      // Apply padding to shrink the collision box for the rocket (a)
+      // Apply padding to shrink the collision box for more accurate collision
       const aX = a.x + collisionPadding;
       const aY = a.y + collisionPadding;
       const aW = a.w - (collisionPadding * 2);
       const aH = a.h - (collisionPadding * 2);
 
-      // For obstacle (b), use its full dimensions for collision (no padding)
-      const bX = b.x;
-      const bY = b.y;
-      const bW = b.w;
-      const bH = b.h;
+      const bX = b.x + collisionPadding;
+      const bY = b.y + collisionPadding;
+      const bW = b.w - (collisionPadding * 2);
+      const bH = b.h - (collisionPadding * 2);
 
       return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
     }
