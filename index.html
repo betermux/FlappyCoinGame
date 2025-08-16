@@ -33,7 +33,7 @@
       height: 100vh;
     }
     
-    /* Top bar */
+    /* Top bar - shown in menu, hidden during game */
     #topBar {
       display: flex;
       justify-content: space-between;
@@ -42,7 +42,6 @@
       background: linear-gradient(180deg, #0f1430aa, #0c1126aa);
       backdrop-filter: blur(8px);
       z-index: 10;
-      position: relative;
     }
     
     #coinsDisplay {
@@ -104,13 +103,7 @@
       align-items: center;
     }
     
-    #equippedRocket img {
-      max-width: 80%;
-      max-height: 80%;
-      object-fit: contain;
-    }
-    
-    /* Bottom menu */
+    /* Bottom menu - shown in menu, hidden during game */
     #bottomMenu {
       display: flex;
       justify-content: space-around;
@@ -132,7 +125,6 @@
       border: none;
       cursor: pointer;
       width: 100%;
-      transition: all 0.2s;
     }
     
     .menuButton.active {
@@ -183,37 +175,74 @@
       overflow-y: auto;
     }
     
-    /* Game start screen */
-    #playScreen {
+    /* Leaderboard screen styles (keep existing) */
+    #leaderboardScreen {
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
+    }
+    
+    #boardCard {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 16px 48px #0009;
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #1d2740;
+    }
+    
+    th {
+      color: #cfe1ff;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    
+    td.rank {
+      width: 56px;
       text-align: center;
+      color: #7ec1ff;
     }
     
-    #startGameBtn {
-      background: linear-gradient(45deg, var(--accent-dark), var(--accent));
-      color: #2b1900;
-      font-weight: bold;
-      padding: 16px 32px;
+    td.score {
+      font-weight: 700;
+      color: #fff;
+    }
+    
+    .top1 .score { color: #ffd54a }
+    .top2 .score { color: #c0e1ff }
+    .top3 .score { color: #ffc9a8 }
+    
+    .footerRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    
+    .backButton {
+      background: #ffffff14;
+      color: #fff;
       border: none;
-      border-radius: 16px;
-      font-size: 20px;
+      border-radius: 12px;
+      padding: 12px 18px;
       cursor: pointer;
-      box-shadow: 0 8px 24px #ffb30052;
-      margin-top: 24px;
-      transition: transform 0.1s;
-    }
-    
-    #startGameBtn:active {
-      transform: scale(0.95);
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <!-- Top bar with user info and coins -->
+    <!-- Top bar - hidden during game -->
     <div id="topBar">
       <div id="coinsDisplay">
         <img src="assets/coin.png" alt="Coins">
@@ -225,7 +254,7 @@
       </div>
     </div>
     
-    <!-- Main content area -->
+    <!-- Main content area - hidden during game -->
     <div id="mainContent">
       <div id="rocketDisplay">
         <div id="equippedRocket">
@@ -234,19 +263,15 @@
       </div>
     </div>
     
-    <!-- Bottom navigation menu -->
+    <!-- Bottom navigation menu - hidden during game -->
     <div id="bottomMenu">
       <button class="menuButton active" data-screen="home">
         <div class="icon">🏠</div>
         <span>Home</span>
       </button>
-      <button class="menuButton" data-screen="play">
+      <button class="menuButton" data-screen="shop">
         <div class="icon">🚀</div>
         <span>Play</span>
-      </button>
-      <button class="menuButton" data-screen="shop">
-        <div class="icon">🛒</div>
-        <span>Shop</span>
       </button>
       <button class="menuButton" data-screen="inventory">
         <div class="icon">🎒</div>
@@ -261,11 +286,44 @@
     <!-- Game canvas (hidden by default) -->
     <canvas id="gameCanvas"></canvas>
     
-    <!-- Play Screen -->
-    <div id="playScreen" class="screen">
-      <h2>Rocket Game</h2>
-      <p>Swipe left/right to control the rocket<br>Avoid obstacles and collect coins</p>
-      <button id="startGameBtn">START GAME</button>
+    <!-- Leaderboard Screen -->
+    <div id="leaderboardScreen" class="screen">
+      <div id="boardCard">
+        <h2>🏆 Leaderboard</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <!-- Filled dynamically -->
+          </tbody>
+        </table>
+      </div>
+      <div class="footerRow">
+        <button id="backHome" class="backButton">⬅ Back</button>
+      </div>
+    </div>
+    
+    <!-- Inventory Screen (stub) -->
+    <div id="inventoryScreen" class="screen">
+      <h2>Inventory</h2>
+      <p>Your collected items will appear here</p>
+      <div class="footerRow">
+        <button class="backButton" data-screen="home">⬅ Back</button>
+      </div>
+    </div>
+    
+    <!-- Shop Screen (stub) -->
+    <div id="shopScreen" class="screen">
+      <h2>Shop</h2>
+      <p>Items available for purchase</p>
+      <div class="footerRow">
+        <button class="backButton" data-screen="home">⬅ Back</button>
+      </div>
     </div>
   </div>
   
@@ -291,7 +349,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* ===== Game Variables ===== */
+    /* ===== Game State ===== */
     let currentUser = "Guest";
     let running = false;
     let score = 0;
@@ -303,82 +361,100 @@
     let rocket = { x: 0, y: 0, w: 100, h: 100, targetX: 0 };
     let obstacles = [];
     let coins = [];
+    const stars = [];
     
     // Assets
     const rocketImg = new Image();
     const obstacleImg = new Image();
     const coinImg = new Image();
-    
-    // Starfield background
-    const stars = [];
 
-    /* ===== UI Initialization ===== */
+    /* ===== Initialization ===== */
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize assets
       rocketImg.src = "assets/rocket.png";
       obstacleImg.src = "assets/obstacle.png";
       coinImg.src = "assets/coin.png";
       
-      // Initialize stars
+      // Initialize game elements
       initializeStars();
-      
-      // Menu button functionality
-      setupMenuButtons();
-      
-      // Start game button
-      document.getElementById('startGameBtn').addEventListener('click', startGame);
-      
-      // Initialize Telegram user info
+      setupMenuSystem();
+      setupGameControls();
       initTelegramUser();
-      
-      // Set up window resize handler
-      window.addEventListener('resize', resizeCanvas);
       resizeCanvas();
     });
 
-    /* ===== Telegram user ===== */
-    function initTelegramUser() {
-      const tg = window.Telegram?.WebApp;
-      tg?.expand();
-
-      const user = tg?.initDataUnsafe?.user;
-      if (user) {
-        currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
-        document.getElementById('userName').textContent = currentUser;
-        if (user.photo_url) {
-          document.getElementById('userPhoto').src = user.photo_url;
-        }
-      }
-    }
-
     /* ===== Menu System ===== */
-    function setupMenuButtons() {
+    function setupMenuSystem() {
+      // Menu buttons
       const menuButtons = document.querySelectorAll('.menuButton');
       menuButtons.forEach(button => {
         button.addEventListener('click', () => {
-          // Set all buttons to inactive
-          menuButtons.forEach(btn => btn.classList.remove('active'));
-          // Set clicked button to active
-          button.classList.add('active');
-          
           const screen = button.getAttribute('data-screen');
           
-          // Hide all screens first
-          document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-          canvas.style.display = 'none';
+          // Highlight active button
+          menuButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
           
-          // Show selected screen
-          if (screen === 'play') {
-            document.getElementById('playScreen').style.display = 'flex';
+          // Handle screen transitions
+          if (screen === 'shop') {
+            // Play button clicked - start game immediately
+            startGame();
+          } else {
+            // Show the selected screen
+            showScreen(screen);
           }
         });
       });
+      
+      // Back buttons
+      document.querySelectorAll('.backButton').forEach(button => {
+        button.addEventListener('click', () => {
+          const target = button.getAttribute('data-screen') || 'home';
+          showScreen(target);
+          
+          // Update menu button states
+          menuButtons.forEach(btn => btn.classList.remove('active'));
+          document.querySelector(`.menuButton[data-screen="${target}"]`).classList.add('active');
+        });
+      });
+    }
+    
+    function showScreen(screenName) {
+      // Hide all screens and show requested one
+      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+      document.getElementById('topBar').style.display = 'flex';
+      document.getElementById('mainContent').style.display = 'flex';
+      document.getElementById('bottomMenu').style.display = 'flex';
+      
+      if (screenName === 'leaderboard') {
+        document.getElementById('leaderboardScreen').style.display = 'flex';
+        showLeaderboard();
+      } 
+      else if (screenName === 'inventory') {
+        document.getElementById('inventoryScreen').style.display = 'flex';
+      }
+      else if (screenName === 'shop') {
+        document.getElementById('shopScreen').style.display = 'flex';
+      }
+      else {
+        // Default home screen
+        menuButtons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.menuButton[data-screen="home"]').classList.add('active');
+      }
     }
 
     /* ===== Game Functions ===== */
+    function setupGameControls() {
+      // Window resize handler
+      window.addEventListener('resize', resizeCanvas);
+    }
+    
     function startGame() {
-      // Hide play screen and show canvas
-      document.getElementById('playScreen').style.display = 'none';
+      // Hide menu UI and show canvas
+      document.getElementById('topBar').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('bottomMenu').style.display = 'none';
+      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
       canvas.style.display = 'block';
       
       // Initialize game state
@@ -396,7 +472,7 @@
         speed: 0.15
       };
       
-      // Reset coins count display
+      // Reset coins display
       document.getElementById('coinsCount').textContent = coinsCount.toLocaleString();
       
       // Set up touch controls
@@ -410,9 +486,9 @@
     function endGame() {
       running = false;
       
-      // Show play screen again
+      // Show menu UI again
       canvas.style.display = 'none';
-      document.getElementById('playScreen').style.display = 'flex';
+      showScreen('home');
       
       // Save score to database
       saveScore();
@@ -565,15 +641,16 @@
     }
     
     function checkCollision(a, b) {
-      const aX = a.x + 15;
-      const aY = a.y + 15;
-      const aW = a.w - 30;
-      const aH = a.h - 30;
+      const padding = 15;
+      const aX = a.x + padding;
+      const aY = a.y + padding;
+      const aW = a.w - (padding * 2);
+      const aH = a.h - (padding * 2);
       
-      const bX = b.x + 15;
-      const bY = b.y + 15;
-      const bW = b.w - 30;
-      const bH = b.h - 30;
+      const bX = b.x + padding;
+      const bY = b.y + padding;
+      const bW = b.w - (padding * 2);
+      const bH = b.h - (padding * 2);
       
       return aX < bX + bW && aX + aW > bX && aY < bY + bH && aY + aH > bY;
     }
@@ -582,8 +659,8 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       
-      // Reposition rocket if game is running
       if (running) {
+        // Reposition rocket if game is running
         rocket.y = canvas.height - 150;
         rocket.targetX = Math.min(rocket.targetX, canvas.width - rocket.w);
         rocket.x = Math.min(rocket.x, canvas.width - rocket.w);
@@ -600,6 +677,82 @@
         createdAt: new Date().toISOString() 
       });
     }
+    
+    /* ===== Telegram user ===== */
+    function initTelegramUser() {
+      const tg = window.Telegram?.WebApp;
+      tg?.expand();
+
+      const user = tg?.initDataUnsafe?.user;
+      if (user) {
+        currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
+        document.getElementById('userName').textContent = currentUser;
+        if (user.photo_url) {
+          document.getElementById('userPhoto').src = user.photo_url;
+        }
+      }
+    }
+    
+    /* ===== Leaderboard ===== */
+    async function showLeaderboard() {
+      const tbody = document.getElementById('leaderboardBody');
+      tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #cfe1ff; text-align: center;">Loading...</td></tr>';
+      
+      try {
+        const snapshot = await get(child(ref(db), "scores"));
+        if (!snapshot.exists()) {
+          tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #cfe1ff; text-align: center;">No scores yet</td></tr>';
+          return;
+        }
+        
+        // Aggregate scores by user
+        const scoresByUser = new Map();
+        const scores = snapshot.val();
+        
+        for (const key in scores) {
+          const entry = scores[key];
+          const username = entry.username || "Guest";
+          
+          if (!scoresByUser.has(username)) {
+            scoresByUser.set(username, {
+              score: entry.score || 0,
+              coins: entry.coins || 0
+            });
+          } else {
+            const current = scoresByUser.get(username);
+            current.score += entry.score || 0;
+            current.coins += entry.coins || 0;
+          }
+        }
+        
+        // Sort by score (descending)
+        const sorted = Array.from(scoresByUser.entries())
+          .sort((a, b) => b[1].score - a[1].score);
+        
+        // Populate table
+        tbody.innerHTML = '';
+        sorted.forEach(([username, data], index) => {
+          const row = document.createElement('tr');
+          if (index === 0) row.classList.add('top1');
+          if (index === 1) row.classList.add('top2');
+          if (index === 2) row.classList.add('top3');
+          
+          row.innerHTML = `
+            <td class="rank">${index + 1}</td>
+            <td>${username}</td>
+            <td class="score">${data.score}</td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+      } catch (error) {
+        console.error("Error loading leaderboard:", error);
+        tbody.innerHTML = '<tr><td colspan="3" style="padding: 16px; color: #ff6b6b; text-align: center;">Error loading leaderboard</td></tr>';
+      }
+    }
+    
+    // Initialize menu buttons reference for global access
+    const menuButtons = document.querySelectorAll('.menuButton');
   </script>
 </body>
 </html>
