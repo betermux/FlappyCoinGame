@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="mn">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -87,7 +87,7 @@
   </style>
 </head>
 <body>
-  <!-- Telegram user badge (home & leaderboard дээр л харагдана) -->
+  <!-- Telegram user badge (visible on home & leaderboard) -->
   <div id="userInfo" style="display:none;">
     <img id="userPhoto" alt="" />
     <span id="userName"></span>
@@ -97,7 +97,7 @@
   <div id="homeScreen" class="screen">
     <div id="homeCard">
       <h1>🚀 Space Rocket</h1>
-      <div class="sub">Зүүн/баруун swipe—аар удирдаж, саадуудыг тойрон <span style="color:#58d3ff">coin</span> цуглуул!</div>
+      <div class="sub">Swipe left/right to control, avoid obstacles and collect <span style="color:#58d3ff">coins</span>!</div>
       <div class="row">
         <button id="startBtn" class="btn">Start Game</button>
         <button id="openBoardBtn" class="btn ghost">Leaderboard</button>
@@ -112,7 +112,7 @@
   <div id="leaderboardScreen" class="screen">
     <div id="boardCard">
       <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 8px;">
-        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (нийлбэр оноо)</h2>
+        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Score)</h2>
         <span id="entriesMeta" class="pill">—</span>
       </div>
       <div style="overflow:auto; max-height: 60vh;">
@@ -120,17 +120,17 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>Нэр</th>
-              <th>Оноо (нийт)</th>
-              <th>Сүүлийн тоглолт</th>
+              <th>Name</th>
+              <th>Score (Total)</th>
+              <th>Last Played</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
         </table>
       </div>
       <div class="footerRow">
-        <button id="backHome" class="btn ghost">⬅ Нүүр</button>
-        <button id="playAgain" class="btn">🔄 Дахин тоглох</button>
+        <button id="backHome" class="btn ghost">⬅ Home</button>
+        <button id="playAgain" class="btn">🔄 Play Again</button>
       </div>
     </div>
   </div>
@@ -206,7 +206,8 @@
     const coinImg = new Image(); coinImg.src = "assets/coin.png";
 
     let running=false, score=0;
-    let rocket = { x: window.innerWidth/2-25, y: window.innerHeight-120, w: 50, h: 50 };
+    // Doubled rocket size
+    let rocket = { x: window.innerWidth/2-50, y: window.innerHeight-120, w: 100, h: 100, targetX: window.innerWidth/2-50, speed: 0.15 };
     let obstacles=[], coins=[];
     let touchStartX=null;
 
@@ -214,17 +215,18 @@
     canvas.addEventListener("touchend", e => {
       if (touchStartX==null) return;
       const dx = e.changedTouches[0].clientX - touchStartX;
-      if (dx>40) rocket.x = Math.min(rocket.x+60, window.innerWidth - rocket.w);
-      if (dx<-40) rocket.x = Math.max(rocket.x-60, 0);
+      // Adjust targetX for smooth movement
+      if (dx>40) rocket.targetX = Math.min(rocket.x + 120, window.innerWidth - rocket.w); // Increased movement step for larger rocket
+      if (dx<-40) rocket.targetX = Math.max(rocket.x - 120, 0); // Increased movement step for larger rocket
       touchStartX=null;
     });
 
     function spawnObstacle(){
-      const size=36;
-      obstacles.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:3});
+      const size=72; // Doubled obstacle size
+      obstacles.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:3, rotation: 0, rotationSpeed: (Math.random() - 0.5) * 0.05 }); // Added rotation properties
     }
     function spawnCoin(){
-      const size=22;
+      const size=44; // Doubled coin size
       coins.push({x:Math.random()*(window.innerWidth-size), y:-size, w:size, h:size, vy:2});
     }
 
@@ -234,16 +236,30 @@
       // bg
       updateStars(); drawStars();
 
+      // Smooth rocket movement
+      rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
+
       // spawn
       if (Math.random()<0.018) spawnObstacle();
       if (Math.random()<0.02) spawnCoin();
 
-      // draw
-      for (const o of obstacles){ o.y+=o.vy; if (obstacleImg.complete) ctx.drawImage(obstacleImg,o.x,o.y,o.w,o.h); }
-      obstacles = obstacles.filter(o=>o.y<window.innerHeight+40);
+      // draw obstacles with rotation
+      for (const o of obstacles){ 
+        o.y+=o.vy; 
+        o.rotation += o.rotationSpeed; // Update rotation
+        if (obstacleImg.complete) {
+          ctx.save(); // Save current canvas state
+          ctx.translate(o.x + o.w / 2, o.y + o.h / 2); // Move origin to center of obstacle
+          ctx.rotate(o.rotation); // Rotate
+          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h); // Draw image centered
+          ctx.restore(); // Restore canvas state
+        }
+      }
+      obstacles = obstacles.filter(o=>o.y<window.innerHeight+o.h+40); // Adjusted filter for larger obstacles
 
+      // draw coins
       for (const c of coins){ c.y+=c.vy; if (coinImg.complete) ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); }
-      coins = coins.filter(c=>c.y<window.innerHeight+22);
+      coins = coins.filter(c=>c.y<window.innerHeight+c.h+22); // Adjusted filter for larger coins
 
       if (rocketImg.complete) ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
 
@@ -252,7 +268,7 @@
       for (let i=coins.length-1;i>=0;i--){ if (hit(rocket,coins[i])){ score++; coins.splice(i,1); } }
 
       // HUD
-      ctx.fillStyle="#eaf2ff"; ctx.font="20px Arial"; ctx.fillText("Оноо: "+score, 12, 28);
+      ctx.fillStyle="#eaf2ff"; ctx.font="20px Arial"; ctx.fillText("Score: "+score, 12, 28);
 
       requestAnimationFrame(loop);
     }
@@ -272,11 +288,13 @@
     const entriesMeta = document.getElementById("entriesMeta");
 
     startBtn.addEventListener("click", ()=>{
-      // тоглоом эхлэх үед badge-ийг нуух
+      // Hide user badge when game starts
       showUserBadge(false);
       homeScreen.style.display="none";
       score=0; obstacles.length=0; coins.length=0;
-      rocket.x = window.innerWidth/2-25; rocket.y = window.innerHeight-120;
+      rocket.x = window.innerWidth/2-rocket.w/2; // Center rocket initially
+      rocket.targetX = rocket.x; // Set targetX to current position
+      rocket.y = window.innerHeight-120;
       running=true;
       requestAnimationFrame(loop);
     });
@@ -285,7 +303,7 @@
       await showLeaderboard();
       homeScreen.style.display="none";
       boardScreen.style.display="flex";
-      // leaderboard дээр badge харагдана
+      // Show badge on leaderboard
       showUserBadge(true);
     });
 
@@ -310,21 +328,21 @@
       // show aggregated leaderboard
       await showLeaderboard();
       boardScreen.style.display="flex";
-      // тоглоом дууссан тул badge дахин харагдана
+      // Show badge again after game ends
       showUserBadge(true);
     }
 
     /**
      * Aggregated leaderboard (sum by username)
      * DB: scores/{id} -> { username, score, createdAt }
-     * UI: нэг username нэг мөр, оноо = SUM(score)
+     * UI: one username per row, score = SUM(score)
      */
     async function showLeaderboard(){
-      tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">Уншиж байна...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`;
       const snapshot = await get(child(ref(db), "scores"));
       if (!snapshot.exists()){
-        tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">Одоогоор оноо алга.</td></tr>`;
-        entriesMeta.textContent = "0 тоглогч";
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">No scores yet.</td></tr>`;
+        entriesMeta.textContent = "0 players";
         return;
       }
 
@@ -361,10 +379,10 @@
         `;
         tbody.appendChild(tr);
       });
-      entriesMeta.textContent = `${aggregated.length} тоглогч`;
+      entriesMeta.textContent = `${aggregated.length} players`;
     }
 
-    // эхний дэлгэц дээр badge харагдана
+    // Show badge on initial screen
     showUserBadge(true);
   </script>
 </body>
