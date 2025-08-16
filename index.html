@@ -207,9 +207,23 @@
 
     let running=false, score=0;
     // Doubled rocket size, moved up, and added targetX for smooth movement
-    let rocket = { x: window.innerWidth/2-50, y: window.innerHeight-200, w: 100, h: 100, targetX: window.innerWidth/2-50, speed: 0.15 };
+    // Added rotation properties to rocket
+    let rocket = { 
+      x: window.innerWidth/2-50, 
+      y: window.innerHeight-200, 
+      w: 100, 
+      h: 100, 
+      targetX: window.innerWidth/2-50, 
+      speed: 0.15,
+      rotation: 0, // Current rotation angle in radians
+      targetRotation: 0, // Target rotation angle in radians
+      rotationSpeed: 0.1 // How quickly the rocket rotates towards targetRotation
+    };
     let obstacles=[], coins=[];
     let touchStartX=null;
+
+    // Define rotation in radians for 10 degrees
+    const ROTATION_ANGLE_RAD = 10 * Math.PI / 180;
 
     canvas.addEventListener("touchstart", e => { 
       touchStartX = e.touches[0].clientX; 
@@ -218,14 +232,29 @@
     }, {passive:true});
 
     canvas.addEventListener("touchmove", e => {
-      // Continuously update targetX as finger moves
-      rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+      const currentTouchX = e.touches[0].clientX;
+      const newTargetX = Math.max(0, Math.min(currentTouchX - rocket.w / 2, window.innerWidth - rocket.w));
+      
+      // Determine target rotation based on movement direction
+      if (newTargetX < rocket.x) { // Moving left
+        rocket.targetRotation = -ROTATION_ANGLE_RAD;
+      } else if (newTargetX > rocket.x) { // Moving right
+        rocket.targetRotation = ROTATION_ANGLE_RAD;
+      } else { // Not moving horizontally
+        rocket.targetRotation = 0;
+      }
+
+      rocket.targetX = newTargetX;
     }, {passive:true});
 
     canvas.addEventListener("touchend", e => {
       if (touchStartX==null) return;
       // Final position update on touch end
-      rocket.targetX = Math.max(0, Math.min(e.changedTouches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
+      const finalTouchX = e.changedTouches[0].clientX;
+      rocket.targetX = Math.max(0, Math.min(finalTouchX - rocket.w / 2, window.innerWidth - rocket.w));
+      
+      // Reset target rotation to 0 when touch ends
+      rocket.targetRotation = 0;
       touchStartX=null;
     });
 
@@ -249,6 +278,9 @@
 
       // Smooth rocket movement
       rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
+      
+      // Smooth rocket rotation
+      rocket.rotation += (rocket.targetRotation - rocket.rotation) * rocket.rotationSpeed;
 
       // spawn
       if (Math.random()<0.008) spawnObstacle(); // Reduced obstacle spawn rate
@@ -272,7 +304,14 @@
       for (const c of coins){ c.y+=c.vy; if (coinImg.complete) ctx.drawImage(coinImg,c.x,c.y,c.w,c.h); }
       coins = coins.filter(c=>c.y<window.innerHeight+c.h+22); // Adjusted filter for larger coins
 
-      if (rocketImg.complete) ctx.drawImage(rocketImg, rocket.x, rocket.y, rocket.w, rocket.h);
+      // Draw rocket with rotation
+      if (rocketImg.complete) {
+        ctx.save(); // Save current canvas state
+        ctx.translate(rocket.x + rocket.w / 2, rocket.y + rocket.h / 2); // Move origin to center of rocket
+        ctx.rotate(rocket.rotation); // Rotate the rocket
+        ctx.drawImage(rocketImg, -rocket.w / 2, -rocket.h / 2, rocket.w, rocket.h); // Draw image centered
+        ctx.restore(); // Restore canvas state
+      }
 
       // collisions
       for (const o of obstacles){ if (hit(rocket,o)){ return endGame(); } }
@@ -317,6 +356,8 @@
       rocket.x = window.innerWidth/2-rocket.w/2; // Center rocket initially
       rocket.targetX = rocket.x; // Set targetX to current position
       rocket.y = window.innerHeight-200; // Adjusted rocket initial Y position
+      rocket.rotation = 0; // Reset rocket rotation
+      rocket.targetRotation = 0; // Reset target rotation
       running=true;
       requestAnimationFrame(loop);
     });
