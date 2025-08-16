@@ -165,7 +165,7 @@
     /* ===== Firebase ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
     import { getDatabase, ref, get, set, update, child, runTransaction } 
-      from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js"; // Added 'update'
+      from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCeD_9k4rfspxHa_T8KAZRhkPT_deFP-OA",
@@ -215,10 +215,10 @@
         const snapshot = await get(userRef);
         
         if (snapshot.exists()) {
-          // User exists, update their username and photo_url if they've changed
           const existingData = snapshot.val();
           userTotalCoins = existingData.totalCoins || 0;
           
+          // Only update username/photo_url if they are different to avoid unnecessary writes
           if (existingData.username !== currentUser || existingData.photo_url !== photoUrl) {
             await update(userRef, {
               username: currentUser,
@@ -235,10 +235,11 @@
             createdAt: new Date().toISOString()
           });
         }
+        userCoinsEl.textContent = `🪙 ${userTotalCoins}`; // Display coins with an emoji for logged-in users
       } else {
         userTotalCoins = 0; // Guests have 0 total coins
+        userCoinsEl.textContent = `(Guest)`; // Indicate guest status
       }
-      userCoinsEl.textContent = `🪙 ${userTotalCoins}`; // Display coins with an emoji
     }
 
     /* ===== Canvas / Game ===== */
@@ -268,6 +269,11 @@
     const rocketImg = new Image(); rocketImg.src = "assets/rocket.png";
     const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.png";
     const coinImg = new Image(); coinImg.src = "assets/coin.png";
+
+    // Load the coin collection sound
+    const coinCollectSound = new Audio('assets/coincollect.mp3');
+    coinCollectSound.volume = 0.5; // Adjust volume as needed (0.0 to 1.0)
+
 
     let running=false, score=0; // score now represents coins
     // Doubled rocket size, moved up, and added targetX for smooth movement
@@ -423,7 +429,12 @@
         if (!coins[i].collected && hit(rocket,coins[i])){ 
           score++; 
           coins[i].collected = true; // Mark as collected to start fade-out
-          // coins.splice(i,1); // DO NOT splice immediately for animation
+          
+          // Play coin collection sound
+          // Create a new Audio object each time to allow overlapping sounds
+          const playSound = new Audio('assets/coincollect.mp3');
+          playSound.volume = 0.5; // Ensure volume is set
+          playSound.play().catch(e => console.error("Error playing sound:", e)); // Add error handling
         } 
       }
 
