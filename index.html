@@ -161,7 +161,7 @@
     }
     #backFromInventory {
       position: absolute;
-      top: 60px; /* #userInfo-тай давхацчихгүй байхаар зай авсан */
+      top: 60px;
       left: 12px;
       z-index: 20;
       padding: 8px 16px;
@@ -171,8 +171,8 @@
     /* Rocket GIF container */
     #rocketGif {
       position: absolute;
-      width: 80px;
-      height: 80px;
+      width: 100px; /* rocket объектын хэмжээтэй тааруулсан */
+      height: 100px;
       pointer-events: none;
       z-index: 10;
     }
@@ -293,8 +293,8 @@
         padding: 12px;
       }
       #rocketGif {
-        width: 60px;
-        height: 60px;
+        width: 80px; /* Жижиг дэлгэц дээр бага зэрэг багасгасан */
+        height: 80px;
       }
     }
   </style>
@@ -503,7 +503,6 @@
       }
 
       document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
-      // Update rocket images based on current skin
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
@@ -554,6 +553,17 @@
       collisionWidthShrink: 50,
       collisionHeightShrink: 20
     };
+
+    // Star animation
+    let stars = [];
+    function spawnStar() {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: -5,
+        radius: Math.random() * 2 + 1,
+        vy: Math.random() * 2 + 2
+      });
+    }
 
     // Game state
     let running = false, score = 0;
@@ -624,6 +634,19 @@
     function loop(t) {
       if (!running) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Spawn stars
+      if (Math.random() < 0.1) spawnStar();
+
+      // Draw and update stars (background)
+      ctx.fillStyle = "#ffffff";
+      for (const star of stars) {
+        star.y += star.vy;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      stars = stars.filter(star => star.y < canvas.height + star.radius);
 
       // Update rocket position
       rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
@@ -744,7 +767,7 @@
       homeScreen.style.display = "none";
       boardScreen.style.display = "none";
       inventoryScreen.style.display = "none";
-      score = 0; obstacles = []; coins = [];
+      score = 0; obstacles = []; coins = []; stars = [];
       rocket.x = window.innerWidth/2 - rocket.w/2;
       rocket.targetX = rocket.x;
       rocket.y = window.innerHeight - 200;
