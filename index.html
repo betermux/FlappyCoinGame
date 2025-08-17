@@ -32,16 +32,16 @@
       z-index: 20;
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
+      gap: 8px;
+      padding: 6px 10px;
       border-radius: 999px;
       background: linear-gradient(180deg, #0f1430aa, #0c1126aa);
       box-shadow: 0 8px 24px #0006, inset 0 0 0 1px #ffffff08;
       backdrop-filter: blur(8px);
     }
-    #userPhoto { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-    #userName { font-weight: 600; color: #fff; }
-    #userCoins { font-weight: 600; color: var(--accent2); margin-left: 5px; }
+    #userPhoto { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    #userName { font-weight: 600; color: #fff; font-size: 14px; }
+    #userCoins { font-weight: 600; color: var(--accent2); font-size: 14px; }
 
     /* Screens */
     .screen {
@@ -51,7 +51,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 16px;
       z-index: 15;
       background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
       backdrop-filter: blur(6px);
@@ -59,50 +59,55 @@
     #homeScreen {
       background: radial-gradient(ellipse at center, #0f1426 0%, #090c16 100%);
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
       padding: 0;
     }
     .home-content {
       width: 100%;
-      max-width: 800px;
+      max-width: 600px;
       margin: 0 auto;
-      padding: 30px;
+      padding: 20px;
       position: relative;
     }
     .btn-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       justify-content: center;
       flex-wrap: wrap;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     /* Inventory Screen */
     #inventoryScreen {
       display: none;
       background: radial-gradient(ellipse at bottom, #0d1120 0%, #070913 100%);
-      padding-top: 80px;
+      padding: 16px;
     }
     #inventoryContainer {
       width: 100%;
-      max-width: 900px;
+      max-width: 600px;
       margin: 0 auto;
     }
     .inventory-header {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
+    }
+    .inventory-header h2 {
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+    .inventory-header p {
+      font-size: 14px;
+      color: var(--muted);
     }
     .skin-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 20px;
-      padding: 0 20px;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 16px;
+      padding: 0 10px;
     }
     .skin-card {
       background: rgba(16, 23, 39, 0.7);
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
       transition: transform 0.2s;
       border: 2px solid transparent;
@@ -113,7 +118,7 @@
     }
     .skin-card.equipped {
       border-color: var(--accent);
-      box-shadow: 0 0 20px rgba(255, 213, 74, 0.3);
+      box-shadow: 0 0 15px rgba(255, 213, 74, 0.3);
     }
     .skin-card.locked {
       filter: grayscale(1) brightness(0.5);
@@ -125,7 +130,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 24px;
+      font-size: 20px;
     }
     .skin-preview {
       width: 100%;
@@ -136,36 +141,38 @@
       background: rgba(0, 0, 0, 0.2);
     }
     .skin-preview img {
-      max-width: 80%;
-      max-height: 80%;
+      max-width: 70%;
+      max-height: 70%;
       object-fit: contain;
     }
     .skin-name {
-      padding: 12px;
+      padding: 8px;
       text-align: center;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 12px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
     .inventory-footer {
       display: flex;
       justify-content: center;
-      padding: 20px;
-      margin-top: 20px;
+      padding: 16px;
+      margin-top: 16px;
       background: rgba(9, 12, 22, 0.8);
     }
     #backFromInventory {
       position: absolute;
-      top: 12px;
-      left: 12px; /* Баруун дээдээс зүүн дээд буланд шилжүүлсэн */
+      top: 60px; /* #userInfo-тай давхацчихгүй байхаар зай авсан */
+      left: 12px;
       z-index: 20;
+      padding: 8px 16px;
+      font-size: 14px;
     }
 
     /* Rocket GIF container */
     #rocketGif {
       position: absolute;
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       pointer-events: none;
       z-index: 10;
     }
@@ -194,11 +201,11 @@
       color: #2b1900;
       font-weight: 700;
       letter-spacing: 0.3px;
-      padding: 12px 24px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1px #ffffff08;
+      padding: 8px 16px;
+      border-radius: 10px;
+      box-shadow: 0 6px 15px #ffb30052, inset 0 0 0 1px #ffffff08;
       transition: transform 0.08s ease, filter 0.2s ease, box-shadow 0.2s ease;
-      font-size: 16px;
+      font-size: 14px;
     }
     .btn:hover { filter: brightness(1.05); }
     .btn:active { transform: translateY(1px); }
@@ -211,37 +218,84 @@
     /* Leaderboard styles */
     #leaderboardScreen { display: none; }
     #boardCard {
-      width: min(860px, 96vw);
+      width: min(600px, 96vw);
       background: var(--card);
-      border-radius: 18px;
-      padding: 18px 14px 14px;
-      box-shadow: 0 16px 48px #0009, inset 0 0 0 1px #ffffff08;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 12px 36px #0009, inset 0 0 0 1px #ffffff08;
     }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #1d2740; }
-    th { color: #cfe1ff; text-transform: uppercase; letter-spacing: 0.6px; }
-    td.rank { width: 56px; text-align: center; color: #7ec1ff; }
-    td.score { font-weight: 700; color: #fff; }
+    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #1d2740; }
+    th { color: #cfe1ff; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+    td.rank { width: 48px; text-align: center; color: #7ec1ff; }
+    td.score { font-weight: 700; color: #fff; font-size: 12px; }
     .pill {
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 999px;
       background: #ffffff10;
       color: #dbe9ff;
-      font-size: 12px;
+      font-size: 10px;
     }
     .top1 .score { color: #ffd54a; }
     .top2 .score { color: #c0e1ff; }
     .top3 .score { color: #ffc9a8; }
-    .footerRow { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+    .footerRow { display: flex; justify-content: space-between; gap: 6px; margin-top: 12px; }
     .ghost { background: #ffffff14; color: #fff; }
 
     /* Animations */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
+      50% { transform: translateY(-8px); }
     }
     .floating {
       animation: float 3s ease-in-out infinite;
+    }
+
+    /* Responsive design for mobile */
+    @media (max-width: 600px) {
+      .home-content {
+        padding: 15px;
+      }
+      .inventory-header h2 {
+        font-size: 18px;
+      }
+      .inventory-header p {
+        font-size: 12px;
+      }
+      .skin-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 12px;
+        padding: 0 8px;
+      }
+      .skin-card {
+        border-radius: 8px;
+      }
+      .skin-preview img {
+        max-width: 65%;
+        max-height: 65%;
+      }
+      .skin-name {
+        font-size: 10px;
+        padding: 6px;
+      }
+      #backFromInventory {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      #inventoryContainer {
+        max-width: 100%;
+      }
+      .inventory-footer {
+        padding: 12px;
+      }
+      #rocketGif {
+        width: 60px;
+        height: 60px;
+      }
     }
   </style>
 </head>
@@ -291,8 +345,8 @@
   <!-- Leaderboard screen -->
   <div id="leaderboardScreen" class="screen">
     <div id="boardCard">
-      <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 8px;">
-        <h2 style="margin:8px 0 0; font-size:22px">🏆 Leaderboard (Total Coin)</h2>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 6px 6px;">
+        <h2 style="margin:6px 0 0; font-size:18px">🏆 Leaderboard (Total Coin)</h2>
         <span id="entriesMeta" class="pill">—</span>
       </div>
       <div style="overflow:auto; max-height: 60vh;">
