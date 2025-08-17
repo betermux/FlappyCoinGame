@@ -253,39 +253,6 @@
     .floating {
       animation: float 3s ease-in-out infinite;
     }
-
-    /* Nav controls */
-    .nav-controls {
-      position: fixed;
-      bottom: 20px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      z-index: 50;
-    }
-    .nav-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      color: white;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      cursor: pointer;
-      transition: all 0.2s;
-      backdrop-filter: blur(5px);
-    }
-    .nav-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-    .nav-btn:active {
-      transform: scale(0.9);
-    }
   </style>
 </head>
 <body>
@@ -309,14 +276,6 @@
       <div class="btn-row">
         <button id="openInventoryBtn" class="btn secondary">🎨 INVENTORY</button>
       </div>
-    </div>
-
-    <!-- Navigation controls -->
-    <div class="nav-controls">
-      <button class="nav-btn" id="homeNavBtn">🏠</button>
-      <button class="nav-btn" id="gameNavBtn">🎮</button>
-      <button class="nav-btn" id="inventoryNavBtn">📦</button>
-      <button class="nav-btn" id="leaderboardNavBtn">🏆</button>
     </div>
   </div>
 
@@ -733,68 +692,14 @@
     const tbody = document.getElementById("leaderboardBody");
     const entriesMeta = document.getElementById("entriesMeta");
 
-    // Navigation buttons
-    const homeNavBtn = document.getElementById("homeNavBtn");
-    const gameNavBtn = document.getElementById("gameNavBtn");
-    const inventoryNavBtn = document.getElementById("inventoryNavBtn");
-    const leaderboardNavBtn = document.getElementById("leaderboardNavBtn");
-
     // Button sound effects
-    const allButtons = document.querySelectorAll('.btn, .nav-btn');
+    const allButtons = document.querySelectorAll('.btn');
     allButtons.forEach(button => {
       button.addEventListener('click', () => {
         popSound.currentTime = 0;
         popSound.play().catch(e => console.error("Error playing pop sound:", e));
       });
     });
-
-    // Navigation controls
-    homeNavBtn.addEventListener("click", () => {
-      showHomeScreen();
-    });
-
-    gameNavBtn.addEventListener("click", () => {
-      showUserBadge(false);
-      homeScreen.style.display = "none";
-      boardScreen.style.display = "none";
-      inventoryScreen.style.display = "none";
-      running = true;
-      gifElement.style.display = 'block';
-      bgMusic.play().catch(e => console.error("Error playing background music:", e));
-      requestAnimationFrame(loop);
-    });
-
-    inventoryNavBtn.addEventListener("click", () => {
-      showInventoryScreen();
-    });
-
-    leaderboardNavBtn.addEventListener("click", async () => {
-      await showLeaderboard();
-      boardScreen.style.display = "flex";
-      homeScreen.style.display = "none";
-      inventoryScreen.style.display = "none";
-      showUserBadge(true);
-    });
-
-    function showHomeScreen() {
-      homeScreen.style.display = "flex";
-      boardScreen.style.display = "none";
-      inventoryScreen.style.display = "none";
-      running = false;
-      gifElement.style.display = 'none';
-      bgMusic.pause();
-      bgMusic.currentTime = 0;
-      showUserBadge(true);
-    }
-
-    function showInventoryScreen() {
-      // Update coins display in inventory before showing
-      document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
-      homeScreen.style.display = "none";
-      boardScreen.style.display = "none";
-      inventoryScreen.style.display = "flex";
-      showUserBadge(true);
-    }
 
     // Game controls
     startBtn.addEventListener("click", () => {
@@ -824,9 +729,19 @@
       showUserBadge(true);
     });
 
-    backFromInventory.addEventListener("click", showHomeScreen);
+    backFromInventory.addEventListener("click", () => {
+      homeScreen.style.display = "flex";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      showUserBadge(true);
+    });
 
-    backHome.addEventListener("click", showHomeScreen);
+    backHome.addEventListener("click", () => {
+      homeScreen.style.display = "flex";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      showUserBadge(true);
+    });
 
     playAgain.addEventListener("click", () => {
       boardScreen.style.display = "none";
@@ -977,7 +892,10 @@
     // Initialize
     openInventoryBtn.addEventListener("click", () => {
       populateInventory();
-      showInventoryScreen();
+      inventoryScreen.style.display = "flex";
+      homeScreen.style.display = "none";
+      boardScreen.style.display = "none";
+      showUserBadge(true);
     });
 
     updateUserInfoDisplay();
