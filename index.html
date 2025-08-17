@@ -547,6 +547,7 @@
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
+      gifElement.style.display = 'none'; // Initialize as hidden, shown when game starts
     }
 
     /* ===== Canvas / Game ===== */
@@ -826,7 +827,8 @@
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
-      gifElement.style.display = 'block';
+      gifElement.style.display = 'block'; // Ensure GIF is visible
+      rocketGif.style.display = 'block'; // Ensure GIF container is visible
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
@@ -845,11 +847,12 @@
       pauseScreen.style.display = "none";
       pauseBtn.style.display = "block";
       rocketGif.style.display = "block";
+      gifElement.style.display = "block";
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
 
-    goHomeFromPause.addEventListener("click", () => {
+    goHomeFromPause.addEventListener("click", async () => {
       running = false;
       pauseScreen.style.display = "none";
       homeScreen.style.display = "flex";
@@ -859,6 +862,28 @@
       rocketGif.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
+
+      // Save score to Firebase
+      if (currentUserId !== "guest_id" && score > 0) {
+        const userRef = ref(db, `users/${currentUserId}`);
+        await runTransaction(userRef, (currentData) => {
+          if (currentData) {
+            currentData.totalCoins = (currentData.totalCoins || 0) + score;
+          } else {
+            currentData = {
+              username: currentUser,
+              photo_url: photoUrl,
+              totalCoins: score,
+              unlockedSkins: state.unlockedSkins,
+              currentSkin: state.currentSkin,
+              createdAt: new Date().toISOString()
+            };
+          }
+          return currentData;
+        });
+        await updateUserInfoDisplay();
+      }
+      score = 0; // Reset score after saving
       showUserBadge(true);
     });
 
@@ -976,11 +1001,12 @@
     async function endGame() {
       running = false;
       gifElement.style.display = 'none';
+      rocketGif.style.display = 'none';
       pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
 
-      if (currentUserId !== "guest_id") {
+      if (currentUserId !== "guest_id" && score > 0) {
         const userRef = ref(db, `users/${currentUserId}`);
         await runTransaction(userRef, (currentData) => {
           if (currentData) {
@@ -1004,6 +1030,7 @@
       boardScreen.style.display = "flex";
       pauseScreen.style.display = "none";
       showUserBadge(true);
+      score = 0; // Reset score after saving
     }
 
     // Leaderboard functions
@@ -1050,7 +1077,12 @@
       showUserBadge(true);
     });
 
-    updateUserInfoDisplay();
+    // Ensure skins are loaded on page load
+    updateUserInfoDisplay().then(() => {
+      const skinData = state.skins[state.currentSkin];
+      rocketImg.src = skinData.png;
+      gifElement.src = skinData.gif;
+    });
     showUserBadge(true);
   </script>
 </body>
