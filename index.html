@@ -43,8 +43,8 @@
     #userName { font-weight: 600; color: #fff; font-size: 14px; }
     #userCoins { font-weight: 600; color: var(--accent2); font-size: 14px; }
 
-    /* Home Screen */
-    #homeScreen {
+    /* Screens */
+    .screen {
       position: fixed;
       inset: 0;
       display: flex;
@@ -53,34 +53,27 @@
       justify-content: center;
       padding: 16px;
       z-index: 15;
+      background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
+      backdrop-filter: blur(6px);
+    }
+    #homeScreen {
       background: radial-gradient(ellipse at center, #0f1426 0%, #090c16 100%);
       text-align: center;
+      padding: 0;
+    }
+    .home-content {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      position: relative;
     }
     .btn-row {
-      position: fixed;
-      bottom: 20px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: min(600px, 90vw);
-      padding: 0 10px;
-    }
-    .home-rocket {
-      width: 120px;
-      height: 120px;
-      max-width: 30vw;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      object-fit: contain;
-      animation: float 3s ease-in-out infinite;
-    }
-    #homeTitle {
-      position: absolute;
-      top: 20px;
-      font-size: 32px;
-      margin: 0;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
 
     /* Inventory Screen */
@@ -276,8 +269,8 @@
 
     /* Animations */
     @keyframes float {
-      0%, 100% { transform: translate(-50%, -50%); }
-      50% { transform: translate(-50%, -58%); }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
     }
     .floating {
       animation: float 3s ease-in-out infinite;
@@ -285,21 +278,8 @@
 
     /* Responsive design for mobile */
     @media (max-width: 600px) {
-      #homeTitle {
-        font-size: 24px;
-      }
-      .home-rocket {
-        width: 100px;
-        height: 100px;
-      }
-      .btn-row {
-        width: min(100%, 90vw);
-        padding: 0 8px;
-        bottom: 15px;
-      }
-      .btn {
-        padding: 6px 12px;
-        font-size: 12px;
+      .home-content {
+        padding: 15px;
       }
       .inventory-header h2 {
         font-size: 18px;
@@ -324,6 +304,10 @@
         padding: 6px;
       }
       #backFromInventory {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .btn {
         padding: 6px 12px;
         font-size: 12px;
       }
@@ -354,12 +338,15 @@
 
   <!-- Home screen -->
   <div id="homeScreen" class="screen">
-    <h1 id="homeTitle">BilzorX</h1>
-    <img id="homeRocket" class="home-rocket" src="assets/rocket.png" alt="Selected rocket">
-    <div class="btn-row">
-      <button id="openBoardBtn" class="btn btn-secondary">🏆 LEADERBOARD</button>
-      <button id="startBtn" class="btn">🚀 LAUNCH GAME</button>
-      <button id="openInventoryBtn" class="btn btn-secondary">🎨 INVENTORY</button>
+    <div class="home-content">
+      <h1>BilzorX</h1>
+      <div class="btn-row">
+        <button id="startBtn" class="btn">🚀 LAUNCH GAME</button>
+        <button id="openBoardBtn" class="btn secondary">🏆 LEADERBOARD</button>
+      </div>
+      <div class="btn-row">
+        <button id="openInventoryBtn" class="btn secondary">🎨 INVENTORY</button>
+      </div>
     </div>
   </div>
 
@@ -384,7 +371,7 @@
       <h2>PAUSED</h2>
       <div class="btn-row">
         <button id="resumeGame" class="btn">▶ RESUME</button>
-        <button id="goHomeFromPause" class="btn btn-secondary">⬅ GO HOME</button>
+        <button id="goHomeFromPause" class="btn secondary">⬅ GO HOME</button>
       </div>
     </div>
   </div>
@@ -510,7 +497,6 @@
     const userNameEl = document.getElementById("userName");
     const userPhotoEl = document.getElementById("userPhoto");
     const userCoinsEl = document.getElementById("userCoins");
-    const homeRocket = document.getElementById("homeRocket");
 
     function showUserBadge(show) {
       userInfo.style.display = show ? "flex" : "none";
@@ -561,8 +547,6 @@
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
-      homeRocket.src = skinData.png; // Update home screen rocket
-      gifElement.style.display = 'none'; // Initialize as hidden, shown when game starts
     }
 
     /* ===== Canvas / Game ===== */
@@ -842,8 +826,7 @@
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
-      gifElement.style.display = 'block'; // Ensure GIF is visible
-      rocketGif.style.display = 'block'; // Ensure GIF container is visible
+      gifElement.style.display = 'block';
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
@@ -862,12 +845,11 @@
       pauseScreen.style.display = "none";
       pauseBtn.style.display = "block";
       rocketGif.style.display = "block";
-      gifElement.style.display = "block";
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
 
-    goHomeFromPause.addEventListener("click", async () => {
+    goHomeFromPause.addEventListener("click", () => {
       running = false;
       pauseScreen.style.display = "none";
       homeScreen.style.display = "flex";
@@ -877,28 +859,6 @@
       rocketGif.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
-
-      // Save score to Firebase
-      if (currentUserId !== "guest_id" && score > 0) {
-        const userRef = ref(db, `users/${currentUserId}`);
-        await runTransaction(userRef, (currentData) => {
-          if (currentData) {
-            currentData.totalCoins = (currentData.totalCoins || 0) + score;
-          } else {
-            currentData = {
-              username: currentUser,
-              photo_url: photoUrl,
-              totalCoins: score,
-              unlockedSkins: state.unlockedSkins,
-              currentSkin: state.currentSkin,
-              createdAt: new Date().toISOString()
-            };
-          }
-          return currentData;
-        });
-        await updateUserInfoDisplay();
-      }
-      score = 0; // Reset score after saving
       showUserBadge(true);
     });
 
@@ -975,7 +935,6 @@
       // Update rocket images
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
-      homeRocket.src = skinData.png; // Update home screen rocket
 
       // Update UI
       populateInventory();
@@ -1017,12 +976,11 @@
     async function endGame() {
       running = false;
       gifElement.style.display = 'none';
-      rocketGif.style.display = 'none';
       pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
 
-      if (currentUserId !== "guest_id" && score > 0) {
+      if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
         await runTransaction(userRef, (currentData) => {
           if (currentData) {
@@ -1046,7 +1004,6 @@
       boardScreen.style.display = "flex";
       pauseScreen.style.display = "none";
       showUserBadge(true);
-      score = 0; // Reset score after saving
     }
 
     // Leaderboard functions
@@ -1093,13 +1050,7 @@
       showUserBadge(true);
     });
 
-    // Ensure skins are loaded on page load
-    updateUserInfoDisplay().then(() => {
-      const skinData = state.skins[state.currentSkin];
-      rocketImg.src = skinData.png;
-      gifElement.src = skinData.gif;
-      homeRocket.src = skinData.png;
-    });
+    updateUserInfoDisplay();
     showUserBadge(true);
   </script>
 </body>
