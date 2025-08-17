@@ -195,16 +195,6 @@
       left: 0;
       z-index: 5;
     }
-
-    /* Stars Canvas */
-    #starsCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1; /* Behind other elements */
-    }
     
     /* Buttons */
     .btn {
@@ -266,9 +256,6 @@
   </style>
 </head>
 <body>
-  <!-- Stars Canvas (Background) -->
-  <canvas id="starsCanvas"></canvas>
-
   <!-- User profile badge -->
   <div id="userInfo" style="display:none;">
     <img id="userPhoto" alt="User profile photo" />
@@ -420,6 +407,13 @@
     let currentUserId = "guest_id";
     let photoUrl = "";
     let userTotalCoins = 0;
+
+    const user = tg?.initDataUnsafe?.user;
+    if (user) {
+      currentUserId = user.id.toString();
+      currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
+      photoUrl = user.photo_url || "";
+    }
 
     const userInfo = document.getElementById("userInfo");
     const userNameEl = document.getElementById("userName");
@@ -896,65 +890,6 @@
       entriesMeta.textContent = `${sortedUsers.length} players`;
     }
 
-    /* ===== Stars Animation ===== */
-    const starsCanvas = document.getElementById('starsCanvas');
-    const starsCtx = starsCanvas.getContext('2d');
-    let stars = [];
-    const numStars = 200; // Number of stars
-
-    function resizeStarsCanvas() {
-      starsCanvas.width = window.innerWidth;
-      starsCanvas.height = window.innerHeight;
-      // Re-initialize stars on resize to distribute them correctly
-      initStars(); 
-    }
-
-    function initStars() {
-      stars = [];
-      for (let i = 0; i < numStars; i++) {
-        stars.push({
-          x: Math.random() * starsCanvas.width - starsCanvas.width / 2, // Centered X
-          y: Math.random() * starsCanvas.height - starsCanvas.height / 2, // Centered Y
-          z: Math.random() * starsCanvas.width, // Z-depth for perspective
-          size: Math.random() * 2 + 0.5, // Star size
-          speed: Math.random() * 0.5 + 0.1 // Star speed
-        });
-      }
-    }
-
-    function drawStars() {
-      starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
-      starsCtx.fillStyle = '#FFFFFF'; // White stars
-
-      for (let i = 0; i < numStars; i++) {
-        const star = stars[i];
-
-        // Update Z position to simulate movement
-        star.z -= star.speed;
-
-        // If star moves off screen (too close), reset it to the back
-        if (star.z <= 0) {
-          star.z = starsCanvas.width;
-          star.x = Math.random() * starsCanvas.width - starsCanvas.width / 2;
-          star.y = Math.random() * starsCanvas.height - starsCanvas.height / 2;
-          star.size = Math.random() * 2 + 0.5;
-          star.speed = Math.random() * 0.5 + 0.1;
-        }
-
-        // Calculate perspective coordinates
-        const sx = (star.x / star.z) * starsCanvas.width + starsCanvas.width / 2;
-        const sy = (star.y / star.z) * starsCanvas.height + starsCanvas.height / 2;
-        const sSize = star.size * (starsCanvas.width / star.z); // Scale size by depth
-
-        // Draw the star
-        starsCtx.beginPath();
-        starsCtx.arc(sx, sy, sSize / 2, 0, Math.PI * 2);
-        starsCtx.fill();
-      }
-
-      requestAnimationFrame(drawStars);
-    }
-
     // Initialize
     openInventoryBtn.addEventListener("click", () => {
       populateInventory();
@@ -966,11 +901,6 @@
 
     updateUserInfoDisplay();
     showUserBadge(true);
-
-    // Initialize and start stars animation
-    resizeStarsCanvas(); // Set initial size and populate stars
-    window.addEventListener('resize', resizeStarsCanvas); // Handle resize
-    drawStars(); // Start the animation loop
   </script>
 </body>
 </html>
