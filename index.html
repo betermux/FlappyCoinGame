@@ -168,10 +168,35 @@
       font-size: 14px;
     }
 
+    /* Pause Screen */
+    #pauseScreen {
+      display: none;
+      background: radial-gradient(ellipse at center, #0f1426 0%, #090c16 100%);
+      text-align: center;
+      padding: 20px;
+    }
+    #pauseScreen .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Pause Button */
+    #pauseBtn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 20;
+      padding: 8px 16px;
+      font-size: 14px;
+      display: none;
+    }
+
     /* Rocket GIF container */
     #rocketGif {
       position: absolute;
-      width: 120px; /* PNG-тэй тааруулж томруулсан */
+      width: 120px;
       height: 120px;
       pointer-events: none;
       z-index: 10;
@@ -293,8 +318,12 @@
         padding: 12px;
       }
       #rocketGif {
-        width: 100px; /* Жижиг дэлгэц дээр PNG-тэй тааруулж бага зэрэг багасгасан */
+        width: 100px;
         height: 100px;
+      }
+      #pauseBtn {
+        padding: 6px 12px;
+        font-size: 12px;
       }
     }
   </style>
@@ -336,11 +365,23 @@
     </div>
   </div>
 
+  <!-- Pause screen -->
+  <div id="pauseScreen" class="screen">
+    <div class="home-content">
+      <h2>PAUSED</h2>
+      <div class="btn-row">
+        <button id="resumeGame" class="btn">▶ RESUME</button>
+        <button id="goHomeFromPause" class="btn secondary">⬅ GO HOME</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Game elements -->
   <canvas id="gameCanvas"></canvas>
   <div id="rocketGif">
     <img id="rocketGifImg" src="assets/rocket.gif" style="width:100%; height:100%; display:none;">
   </div>
+  <button id="pauseBtn" class="btn">⏸ PAUSE</button>
 
   <!-- Leaderboard screen -->
   <div id="leaderboardScreen" class="screen">
@@ -513,6 +554,10 @@
     const ctx = canvas.getContext("2d");
     const rocketGif = document.getElementById("rocketGif");
     const gifElement = document.getElementById("rocketGifImg");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const pauseScreen = document.getElementById("pauseScreen");
+    const resumeGame = document.getElementById("resumeGame");
+    const goHomeFromPause = document.getElementById("goHomeFromPause");
 
     // Preload images
     const rocketImg = new Image(); 
@@ -767,6 +812,8 @@
       homeScreen.style.display = "none";
       boardScreen.style.display = "none";
       inventoryScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "block";
       score = 0; obstacles = []; coins = []; stars = [];
       rocket.x = window.innerWidth/2 - rocket.w/2;
       rocket.targetX = rocket.x;
@@ -785,10 +832,42 @@
       requestAnimationFrame(loop);
     });
 
+    pauseBtn.addEventListener("click", () => {
+      running = false;
+      bgMusic.pause();
+      pauseScreen.style.display = "flex";
+      pauseBtn.style.display = "none";
+      rocketGif.style.display = "none";
+    });
+
+    resumeGame.addEventListener("click", () => {
+      running = true;
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "block";
+      rocketGif.style.display = "block";
+      bgMusic.play().catch(e => console.error("Error playing background music:", e));
+      requestAnimationFrame(loop);
+    });
+
+    goHomeFromPause.addEventListener("click", () => {
+      running = false;
+      pauseScreen.style.display = "none";
+      homeScreen.style.display = "flex";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      pauseBtn.style.display = "none";
+      rocketGif.style.display = "none";
+      bgMusic.pause();
+      bgMusic.currentTime = 0;
+      showUserBadge(true);
+    });
+
     openBoardBtn.addEventListener("click", async () => {
       await showLeaderboard();
       boardScreen.style.display = "flex";
       homeScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "none";
       showUserBadge(true);
     });
 
@@ -796,6 +875,8 @@
       homeScreen.style.display = "flex";
       boardScreen.style.display = "none";
       inventoryScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "none";
       showUserBadge(true);
     });
 
@@ -803,11 +884,15 @@
       homeScreen.style.display = "flex";
       boardScreen.style.display = "none";
       inventoryScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "none";
       showUserBadge(true);
     });
 
     playAgain.addEventListener("click", () => {
       boardScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "block";
       showUserBadge(false);
       startBtn.click();
     });
@@ -891,6 +976,7 @@
     async function endGame() {
       running = false;
       gifElement.style.display = 'none';
+      pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
 
@@ -916,6 +1002,7 @@
 
       await showLeaderboard();
       boardScreen.style.display = "flex";
+      pauseScreen.style.display = "none";
       showUserBadge(true);
     }
 
@@ -958,6 +1045,8 @@
       inventoryScreen.style.display = "flex";
       homeScreen.style.display = "none";
       boardScreen.style.display = "none";
+      pauseScreen.style.display = "none";
+      pauseBtn.style.display = "none";
       showUserBadge(true);
     });
 
