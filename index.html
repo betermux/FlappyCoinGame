@@ -6,95 +6,135 @@
   <title>Rocket Game · Telegram WebApp + Leaderboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg:#0b0f1a; --card:#101727cc; --txt:#eaf2ff; --muted:#9fb3ce;
-      --accent:#ffd54a; --accent2:#58d3ff;
+    :root {
+      --bg: #0b0f1a;
+      --card: #101727cc;
+      --txt: #eaf2ff;
+      --muted: #9fb3ce;
+      --accent: #ffd54a;
+      --accent2: #58d3ff;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
-      color:var(--txt); 
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 70% -10%, #16213e 0%, #0b0f1a 55%, #090d16 100%);
+      color: var(--txt);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow:hidden;
+      overflow: hidden;
     }
-    h1, h2, .btn, th, td.score {font-family: 'Press Start 2P', cursive, monospace;}
+    h1, h2, .btn, th, td.score { font-family: 'Press Start 2P', cursive, monospace; }
     
     /* Top-left user badge */
-    #userInfo{
-      position: fixed; top: 12px; left: 12px; z-index: 20;
-      display:flex; align-items:center; gap:10px;
-      padding: 8px 12px; border-radius: 999px;
+    #userInfo {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
       background: linear-gradient(180deg, #0f1430aa, #0c1126aa);
       box-shadow: 0 8px 24px #0006, inset 0 0 0 1px #ffffff08;
       backdrop-filter: blur(8px);
     }
-    #userPhoto{ width:32px; height:32px; border-radius:50%; object-fit:cover; }
-    #userName{ font-weight:600; color:#fff }
-    #userCoins{ font-weight:600; color:var(--accent2); margin-left: 5px; }
+    #userPhoto { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+    #userName { font-weight: 600; color: #fff; }
+    #userCoins { font-weight: 600; color: var(--accent2); margin-left: 5px; }
 
     /* Screens */
-    .screen{
-      position: fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-      padding:24px; z-index: 15;
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 15;
       background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
       backdrop-filter: blur(6px);
     }
-    #homeCard{
-      width:min(720px, 92vw);
+    #homeCard {
+      width: min(720px, 92vw);
       background: var(--card);
-      border-radius: 18px; padding: 22px;
+      border-radius: 18px;
+      padding: 22px;
       box-shadow: 0 16px 48px #0009, inset 0 0 0 1px #ffffff08;
-      text-align:center;
+      text-align: center;
     }
-    .sub{ color:var(--muted); margin: 4px 0 18px; }
-    .row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .sub { color: var(--muted); margin: 4px 0 18px; }
+    .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
-    /* Rocket GIF container - positioned absolutely */
+    /* Rocket GIF container */
     #rocketGif {
       position: absolute;
       width: 100px;
       height: 100px;
-      pointer-events: none; /* So it doesn't interfere with touch events */
-      z-index: 10; /* Make sure it appears above canvas but below UI */
+      pointer-events: none;
+      z-index: 10;
+      /* border: 1px solid red; */ /* Uncomment for debugging */
+    }
+    #rocketGifImg {
+      width: 100%;
+      height: 100%;
       display: none; /* Hidden until game starts */
     }
     
-    /* Canvas and game elements */
-    #gameCanvas{ display:block; width:100vw; height:100vh; position:absolute; top:0; left:0; }
+    /* Canvas */
+    #gameCanvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 5; /* Below rocket GIF */
+    }
     
     /* Buttons */
-    .btn{
-      border:0; cursor:pointer;
+    .btn {
+      border: 0;
+      cursor: pointer;
       background: linear-gradient(180deg, #ffd54a, #ffb300);
-      color:#2b1900; font-weight:700; letter-spacing: .3px;
-      padding: 12px 18px; border-radius: 12px; 
+      color: #2b1900;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      padding: 12px 18px;
+      border-radius: 12px;
       box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1px #ffffff08;
-      transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+      transition: transform 0.08s ease, filter 0.2s ease, box-shadow 0.2s ease;
     }
-    .btn:hover{ filter:brightness(1.05) }
-    .btn:active{ transform: translateY(1px) }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
 
-    /* Leaderboard styles remain unchanged */
-    #leaderboardScreen{ display:none }
-    #boardCard{
-      width:min(860px, 96vw);
+    /* Leaderboard styles */
+    #leaderboardScreen { display: none; }
+    #boardCard {
+      width: min(860px, 96vw);
       background: var(--card);
-      border-radius: 18px; padding: 18px 14px 14px;
+      border-radius: 18px;
+      padding: 18px 14px 14px;
       box-shadow: 0 16px 48px #0009, inset 0 0 0 1px #ffffff08;
     }
-    table{ width:100%; border-collapse: collapse; }
-    th, td{ padding: 10px 8px; text-align: left; border-bottom:1px solid #1d2740; }
-    th{ color:#cfe1ff; text-transform: uppercase; letter-spacing: .6px; }
-    td.rank{ width:56px; text-align:center; color:#7ec1ff }
-    td.score{ font-weight:700; color:#fff }
-    .pill{
-      padding: 6px 10px; border-radius: 999px; background:#ffffff10; color:#dbe9ff; font-size: 12px;
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #1d2740; }
+    th { color: #cfe1ff; text-transform: uppercase; letter-spacing: 0.6px; }
+    td.rank { width: 56px; text-align: center; color: #7ec1ff; }
+    td.score { font-weight: 700; color: #fff; }
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #ffffff10;
+      color: #dbe9ff;
+      font-size: 12px;
     }
-    .top1 .score{ color:#ffd54a }
-    .top2 .score{ color:#c0e1ff }
-    .top3 .score{ color:#ffc9a8 }
-    .footerRow{ display:flex; justify-content:space-between; gap:8px; margin-top:14px }
-    .ghost{ background:#ffffff14; color:#fff }
+    .top1 .score { color: #ffd54a; }
+    .top2 .score { color: #c0e1ff; }
+    .top3 .score { color: #ffc9a8; }
+    .footerRow { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+    .ghost { background: #ffffff14; color: #fff; }
   </style>
 </head>
 <body>
@@ -119,7 +159,9 @@
 
   <!-- Game elements -->
   <canvas id="gameCanvas"></canvas>
-  <div id="rocketGif"></div> <!-- Container for animated rocket GIF -->
+  <div id="rocketGif">
+    <img id="rocketGifImg" src="assets/rocket.gif" style="width:100%; height:100%; display:none;">
+  </div>
 
   <!-- Leaderboard screen -->
   <div id="leaderboardScreen" class="screen">
@@ -193,7 +235,7 @@
     const userPhotoEl = document.getElementById("userPhoto");
     const userCoinsEl = document.getElementById("userCoins");
 
-    function showUserBadge(show){
+    function showUserBadge(show) {
       userInfo.style.display = show ? "flex" : "none";
     }
 
@@ -235,26 +277,27 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const rocketGif = document.getElementById("rocketGif");
-    
-    // Setup animated rocket GIF
-    rocketGif.innerHTML = '<img src="assets/rocket.gif" style="width:100%; height:100%;">';
-    const gifElement = rocketGif.firstChild;
-    gifElement.style.display = 'none'; // Hidden until game starts
+    const gifElement = document.getElementById("rocketGifImg");
 
-    function resizeCanvas(){
+    // Preload images
+    const rocketImg = new Image(); 
+    rocketImg.src = "assets/rocket.png";
+    const obstacleImg = new Image(); 
+    obstacleImg.src = "assets/obstacle.png";
+    const coinImg = new Image(); 
+    coinImg.src = "assets/coin.png";
+    const rocketGifImg = new Image(); 
+    rocketGifImg.src = "assets/rocket.gif";
+    rocketGifImg.onerror = () => {
+      console.error("Failed to load rocket.gif. Check file path or file integrity.");
+    };
+
+    function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
-
-    // Rocket collision image (invisible)
-    const rocketImg = new Image(); 
-    rocketImg.src = "assets/rocket.png";
-    
-    // Other game assets
-    const obstacleImg = new Image(); obstacleImg.src = "assets/obstacle.png";
-    const coinImg = new Image(); coinImg.src = "assets/coin.png";
 
     // Audio elements
     const bgMusic = document.getElementById('bgMusic');
@@ -266,11 +309,11 @@
 
     // Rocket properties
     let rocket = { 
-      x: window.innerWidth/2-50, 
-      y: window.innerHeight-200, 
+      x: window.innerWidth/2 - 50, 
+      y: window.innerHeight - 200, 
       w: 100, 
       h: 100,
-      targetX: window.innerWidth/2-50,
+      targetX: window.innerWidth/2 - 50,
       speed: 0.15,
       rotation: 0,
       targetRotation: 0,
@@ -292,7 +335,7 @@
     canvas.addEventListener("touchstart", e => { 
       touchStartX = e.touches[0].clientX; 
       rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
-    }, {passive:true});
+    }, { passive: true });
 
     canvas.addEventListener("touchmove", e => {
       const currentTouchX = e.touches[0].clientX;
@@ -307,7 +350,7 @@
       }
 
       rocket.targetX = newTargetX;
-    }, {passive:true});
+    }, { passive: true });
 
     canvas.addEventListener("touchend", e => {
       if (touchStartX == null) return;
@@ -318,11 +361,11 @@
     });
 
     // Game objects spawn
-    function spawnObstacle(){
+    function spawnObstacle() {
       const size = 72;
       const obstacleCollisionPadding = 18;
       obstacles.push({
-        x: Math.random()*(window.innerWidth-size), 
+        x: Math.random() * (window.innerWidth - size), 
         y: -size, 
         w: size, 
         h: size, 
@@ -333,10 +376,10 @@
       }); 
     }
 
-    function spawnCoin(){
+    function spawnCoin() {
       const size = 44;
       coins.push({
-        x: Math.random()*(window.innerWidth-size), 
+        x: Math.random() * (window.innerWidth - size), 
         y: -size, 
         w: size, 
         h: size, 
@@ -347,7 +390,7 @@
     }
 
     // Main game loop
-    function loop(t){
+    function loop(t) {
       if (!running) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
@@ -355,18 +398,19 @@
       rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
       rocket.rotation += (rocket.targetRotation - rocket.rotation) * rocket.rotationSpeed;
       
-      // Update animated GIF position to match rocket
-      const screenY = window.innerHeight - rocket.y - rocket.h; // Convert canvas Y to screen Y
+      // Update animated GIF position
+      const screenY = window.innerHeight - rocket.y - rocket.h;
       rocketGif.style.left = rocket.x + 'px';
       rocketGif.style.top = screenY + 'px';
       rocketGif.style.transform = `rotate(${rocket.rotation}rad)`;
-      
+      // console.log("Rocket GIF Position:", rocketGif.style.left, rocketGif.style.top); // Uncomment for debugging
+
       // Spawn objects
       if (Math.random() < 0.008) spawnObstacle();
       if (Math.random() < 0.02) spawnCoin();
 
       // Draw and update obstacles
-      for (const o of obstacles){ 
+      for (const o of obstacles) { 
         o.y += o.vy; 
         o.rotation += o.rotationSpeed;
         if (obstacleImg.complete) {
@@ -380,7 +424,7 @@
       obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40);
 
       // Draw and update coins
-      for (const c of coins){ 
+      for (const c of coins) { 
         if (!c.collected) {
           c.y += c.vy; 
         } else {
@@ -400,7 +444,7 @@
       // Draw invisible rocket for collision
       if (rocketImg.complete) {
         ctx.save();
-        ctx.globalAlpha = 0; // Completely transparent
+        ctx.globalAlpha = 0;
         ctx.translate(rocket.x + rocket.w / 2, rocket.y + rocket.h / 2);
         ctx.rotate(rocket.rotation);
         ctx.drawImage(rocketImg, -rocket.w / 2, -rocket.h / 2, rocket.w, rocket.h);
@@ -408,9 +452,9 @@
       }
 
       // Collision detection
-      for (const o of obstacles){ if (hit(rocket, o)){ return endGame(); } }
-      for (let i = coins.length - 1; i >= 0; i--){ 
-        if (!coins[i].collected && hit(rocket, coins[i])){ 
+      for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } }
+      for (let i = coins.length - 1; i >= 0; i--) { 
+        if (!coins[i].collected && hit(rocket, coins[i])) { 
           score++; 
           coins[i].collected = true;
           const playSound = new Audio('assets/coincollect.mp3');
@@ -428,7 +472,7 @@
     }
 
     // Collision detection
-    function hit(a, b){
+    function hit(a, b) {
       const aX = a.x + a.collisionOffsetX;
       const aY = a.y + a.collisionOffsetY;
       const aW = a.w - a.collisionWidthShrink;
@@ -456,14 +500,14 @@
     // Button sound effects
     const allButtons = document.querySelectorAll('.btn');
     allButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            popSound.currentTime = 0;
-            popSound.play().catch(e => console.error("Error playing pop sound:", e));
-        });
+      button.addEventListener('click', () => {
+        popSound.currentTime = 0;
+        popSound.play().catch(e => console.error("Error playing pop sound:", e));
+      });
     });
 
     // Game controls
-    startBtn.addEventListener("click", ()=>{
+    startBtn.addEventListener("click", () => {
       showUserBadge(false);
       homeScreen.style.display = "none";
       score = 0; obstacles = []; coins = [];
@@ -474,15 +518,16 @@
       rocket.targetRotation = 0;
       running = true;
       
-      // Show and position animated rocket
+      // Show animated rocket
       gifElement.style.display = 'block';
       rocketGif.style.display = 'block';
-      
+      console.log("GIF display:", gifElement.style.display, rocketGif.style.display); // Debug
+
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
 
-    openBoardBtn.addEventListener("click", async ()=>{
+    openBoardBtn.addEventListener("click", async () => {
       bgMusic.pause();
       bgMusic.currentTime = 0;
       gifElement.style.display = 'none';
@@ -492,7 +537,7 @@
       showUserBadge(true);
     });
 
-    backHome.addEventListener("click", ()=>{
+    backHome.addEventListener("click", () => {
       bgMusic.pause();
       bgMusic.currentTime = 0;
       gifElement.style.display = 'none';
@@ -501,14 +546,14 @@
       showUserBadge(true);
     });
 
-    playAgain.addEventListener("click", ()=>{
+    playAgain.addEventListener("click", () => {
       boardScreen.style.display = "none";
       showUserBadge(false);
       startBtn.click();
     });
 
     // Game over handler
-    async function endGame(){
+    async function endGame() {
       running = false;
       gifElement.style.display = 'none';
       bgMusic.pause();
@@ -538,12 +583,12 @@
     }
 
     // Leaderboard functions
-    async function showLeaderboard(){
+    async function showLeaderboard() {
       tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; 
       const usersRef = ref(db, "users");
       const snapshot = await get(usersRef);
       
-      if (!snapshot.exists()){
+      if (!snapshot.exists()) {
         tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins collected yet.</td></tr>`; 
         entriesMeta.textContent = "0 players";
         return;
@@ -552,7 +597,7 @@
       const usersList = Object.values(snapshot.val());
       const sortedUsers = usersList
         .filter(u => u.totalCoins !== undefined)
-        .sort((a,b) => b.totalCoins - a.totalCoins);
+        .sort((a, b) => b.totalCoins - a.totalCoins);
 
       tbody.innerHTML = "";
       sortedUsers.forEach((u, idx) => {
@@ -561,7 +606,7 @@
         else if (idx === 1) tr.classList.add("top2");
         else if (idx === 2) tr.classList.add("top3");
         tr.innerHTML = `
-          <td class="rank">${idx+1}</td>
+          <td class="rank">${idx + 1}</td>
           <td>${u.username}</td>
           <td class="score">${u.totalCoins}</td>
         `;
