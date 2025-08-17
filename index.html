@@ -171,8 +171,8 @@
     /* Rocket GIF container */
     #rocketGif {
       position: absolute;
-      width: 100px; /* PNG-ийн хэмжээтэй (rocket.w, rocket.h) тааруулсан */
-      height: 100px;
+      width: 120px; /* PNG-тэй тааруулж томруулсан */
+      height: 120px;
       pointer-events: none;
       z-index: 10;
     }
@@ -293,8 +293,8 @@
         padding: 12px;
       }
       #rocketGif {
-        width: 80px; /* PNG-ийн хэмжээтэй тааруулсан, жижиг дэлгэц дээр */
-        height: 80px;
+        width: 100px; /* Жижиг дэлгэц дээр PNG-тэй тааруулж бага зэрэг багасгасан */
+        height: 100px;
       }
     }
   </style>
@@ -624,7 +624,7 @@
         y: -size, 
         w: size, 
         h: size, 
-        vy: 3, /* Obstacle-тай ижил хурд */
+        vy: 3,
         alpha: 1,
         collected: false
       });
