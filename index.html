@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Rocket Game · Telegram WebApp + Leaderboard</title>
+  <title>Space Rocket · Full Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -56,16 +56,120 @@
       background: linear-gradient(180deg, #0a0f1ab3, #0a0f1acc);
       backdrop-filter: blur(6px);
     }
-    #homeCard {
-      width: min(720px, 92vw);
-      background: var(--card);
-      border-radius: 18px;
-      padding: 22px;
-      box-shadow: 0 16px 48px #0009, inset 0 0 0 1px #ffffff08;
+    #homeScreen {
+      background: radial-gradient(ellipse at center, #0f1426 0%, #090c16 100%);
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0;
     }
-    .sub { color: var(--muted); margin: 4px 0 18px; }
-    .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .home-content {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 30px;
+      position: relative;
+    }
+    #homeHero {
+      margin: 0 auto 30px;
+      width: 80%;
+      max-width: 400px;
+      aspect-ratio: 1;
+      filter: drop-shadow(0 0 20px rgba(88, 211, 255, 0.3));
+    }
+    .sub {
+      color: var(--muted);
+      margin: 4px 0 30px;
+      font-size: 18px;
+      line-height: 1.4;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    /* Inventory Screen */
+    #inventoryScreen {
+      display: none;
+      background: radial-gradient(ellipse at bottom, #0d1120 0%, #070913 100%);
+      padding-top: 80px;
+    }
+    #inventoryContainer {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .inventory-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+      padding: 0 20px;
+    }
+    .skin-card {
+      background: rgba(16, 23, 39, 0.7);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+    .skin-card:active {
+      transform: scale(0.96);
+    }
+    .skin-card.equipped {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(255, 213, 74, 0.3);
+    }
+    .skin-card.locked {
+      filter: grayscale(1) brightness(0.5);
+      position: relative;
+    }
+    .skin-card.locked::after {
+      content: "🔒";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+    }
+    .skin-preview {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .skin-preview img {
+      max-width: 80%;
+      max-height: 80%;
+      object-fit: contain;
+    }
+    .skin-name {
+      padding: 12px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .inventory-footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
+      margin-top: 20px;
+      background: rgba(9, 12, 22, 0.8);
+    }
 
     /* Rocket GIF container */
     #rocketGif {
@@ -74,12 +178,11 @@
       height: 100px;
       pointer-events: none;
       z-index: 10;
-      /* border: 1px solid red; */ /* Uncomment for debugging */
     }
     #rocketGifImg {
       width: 100%;
       height: 100%;
-      display: none; /* Hidden until game starts */
+      display: none;
     }
     
     /* Canvas */
@@ -90,7 +193,7 @@
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 5; /* Below rocket GIF */
+      z-index: 5;
     }
     
     /* Buttons */
@@ -101,13 +204,19 @@
       color: #2b1900;
       font-weight: 700;
       letter-spacing: 0.3px;
-      padding: 12px 18px;
+      padding: 12px 24px;
       border-radius: 12px;
       box-shadow: 0 8px 20px #ffb30052, inset 0 0 0 1px #ffffff08;
       transition: transform 0.08s ease, filter 0.2s ease, box-shadow 0.2s ease;
+      font-size: 16px;
     }
     .btn:hover { filter: brightness(1.05); }
     .btn:active { transform: translateY(1px); }
+
+    .btn-secondary {
+      background: linear-gradient(180deg, #3d4c6e, #2c3a5a);
+      color: var(--txt);
+    }
 
     /* Leaderboard styles */
     #leaderboardScreen { display: none; }
@@ -135,24 +244,97 @@
     .top3 .score { color: #ffc9a8; }
     .footerRow { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
     .ghost { background: #ffffff14; color: #fff; }
+
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .floating {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    /* Nav controls */
+    .nav-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      z-index: 50;
+    }
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(5px);
+    }
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .nav-btn:active {
+      transform: scale(0.9);
+    }
   </style>
 </head>
 <body>
   <!-- User profile badge -->
   <div id="userInfo" style="display:none;">
-    <img id="userPhoto" alt="" />
+    <img id="userPhoto" alt="User profile photo" />
     <span id="userName"></span>
     <span id="userCoins"></span>
   </div>
 
-  <!-- Home screen -->
+  <!-- Home screen - now full screen -->
   <div id="homeScreen" class="screen">
-    <div id="homeCard">
-      <h1>🚀 Space Rocket</h1>
-      <div class="sub">Swipe left/right to control, avoid obstacles and collect <span style="color:#58d3ff">coins</span>!</div>
-      <div class="row">
-        <button id="startBtn" class="btn">Start Game</button>
-        <button id="openBoardBtn" class="btn ghost">Leaderboard</button>
+    <div class="home-content">
+      <img id="homeHero" src="https://placehold.co/400x400?text=🚀" class="floating" alt="Rocket hero image with glowing effect" />
+      <h1>SPACE ROCKET</h1>
+      <div class="sub">Collect coins to unlock new rocket skins! Swipe left/right to control your rocket and avoid obstacles.</div>
+      <div class="btn-row">
+        <button id="startBtn" class="btn">🚀 LAUNCH GAME</button>
+        <button id="openBoardBtn" class="btn secondary">🏆 LEADERBOARD</button>
+      </div>
+      <div class="btn-row">
+        <button id="openInventoryBtn" class="btn secondary">🎨 INVENTORY</button>
+      </div>
+    </div>
+
+    <!-- Navigation controls -->
+    <div class="nav-controls">
+      <button class="nav-btn" id="homeNavBtn">🏠</button>
+      <button class="nav-btn" id="gameNavBtn">🎮</button>
+      <button class="nav-btn" id="inventoryNavBtn">📦</button>
+      <button class="nav-btn" id="leaderboardNavBtn">🏆</button>
+    </div>
+  </div>
+
+  <!-- Inventory screen -->
+  <div id="inventoryScreen" class="screen">
+    <div id="inventoryContainer">
+      <div class="inventory-header">
+        <h2>🚀 ROCKET SKINS</h2>
+        <p>Unlock new skins by collecting coins in the game</p>
+      </div>
+      
+      <div class="skin-grid" id="skinGrid">
+        <!-- Skins will be added dynamically -->
+      </div>
+
+      <div class="inventory-footer">
+        <button id="backFromInventory" class="btn">⬅ BACK</button>
+        <div class="pill" id="coinsDisplay">COINS: 0</div>
       </div>
     </div>
   </div>
@@ -214,6 +396,49 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    /* ===== Game State ===== */
+    const state = {
+      currentSkin: 'default',
+      unlockedSkins: ['default'],
+      skins: {
+        default: {
+          name: 'Default Rocket',
+          price: 0,
+          unlocked: true,
+          gif: 'assets/rocket.gif',
+          png: 'assets/rocket.png'
+        },
+        fire: {
+          name: 'Flame Rocket',
+          price: 500,
+          unlocked: false,
+          gif: 'assets/rocket_fire.gif',
+          png: 'assets/rocket_fire.png'
+        },
+        ice: {
+          name: 'Ice Rocket',
+          price: 750,
+          unlocked: false,
+          gif: 'assets/rocket_ice.gif',
+          png: 'assets/rocket_ice.png'
+        },
+        rainbow: {
+          name: 'Rainbow Rocket',
+          price: 1000,
+          unlocked: false,
+          gif: 'assets/rocket_rainbow.gif',
+          png: 'assets/rocket_rainbow.png'
+        },
+        galaxy: {
+          name: 'Galaxy Rocket',
+          price: 1500,
+          unlocked: false,
+          gif: 'assets/rocket_galaxy.gif',
+          png: 'assets/rocket_galaxy.png'
+        }
+      }
+    };
+
     /* ===== Telegram user ===== */
     const tg = window.Telegram?.WebApp;
     tg?.expand();
@@ -251,10 +476,18 @@
           const existingData = snapshot.val();
           userTotalCoins = existingData.totalCoins || 0;
           
+          // Load unlocked skins from Firebase
+          if (existingData.unlockedSkins) {
+            state.unlockedSkins = existingData.unlockedSkins;
+            state.currentSkin = existingData.currentSkin || 'default';
+          }
+          
           if (existingData.username !== currentUser || existingData.photo_url !== photoUrl) {
             await update(userRef, {
               username: currentUser,
-              photo_url: photoUrl
+              photo_url: photoUrl,
+              unlockedSkins: state.unlockedSkins,
+              currentSkin: state.currentSkin
             });
           }
         } else {
@@ -263,6 +496,8 @@
             username: currentUser,
             photo_url: photoUrl,
             totalCoins: 0,
+            unlockedSkins: state.unlockedSkins,
+            currentSkin: state.currentSkin,
             createdAt: new Date().toISOString()
           });
         }
@@ -271,6 +506,9 @@
         userTotalCoins = 0;
         userCoinsEl.textContent = `(Guest)`;
       }
+      
+      // Update coins display in inventory
+      document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
     }
 
     /* ===== Canvas / Game ===== */
@@ -288,9 +526,6 @@
     coinImg.src = "assets/coin.png";
     const rocketGifImg = new Image(); 
     rocketGifImg.src = "assets/rocket.gif";
-    rocketGifImg.onerror = () => {
-      console.error("Failed to load rocket.gif. Check file path or file integrity.");
-    };
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -399,13 +634,9 @@
       rocket.rotation += (rocket.targetRotation - rocket.rotation) * rocket.rotationSpeed;
       
       // Update animated GIF position
-      // The GIF's top position needs to be calculated relative to the canvas's top,
-      // which is at the top of the viewport. The rocket.y is measured from the top
-      // of the canvas.
       rocketGif.style.left = rocket.x + 'px';
-      rocketGif.style.top = rocket.y + 'px'; // Set top directly to rocket.y
+      rocketGif.style.top = rocket.y + 'px';
       rocketGif.style.transform = `rotate(${rocket.rotation}rad)`;
-      // console.log("Rocket GIF Position:", rocketGif.style.left, rocketGif.style.top); // Uncomment for debugging
 
       // Spawn objects
       if (Math.random() < 0.008) spawnObstacle();
@@ -446,8 +677,7 @@
       // Draw rocket.png on canvas (this is the one used for collision)
       if (rocketImg.complete) {
         ctx.save();
-        // For visual overlap, draw rocket.png with full opacity
-        ctx.globalAlpha = 1; 
+        ctx.globalAlpha = 1;
         ctx.translate(rocket.x + rocket.w / 2, rocket.y + rocket.h / 2);
         ctx.rotate(rocket.rotation);
         ctx.drawImage(rocketImg, -rocket.w / 2, -rocket.h / 2, rocket.w, rocket.h);
@@ -493,15 +723,24 @@
     /* ===== Screens & Leaderboard ===== */
     const homeScreen = document.getElementById("homeScreen");
     const boardScreen = document.getElementById("leaderboardScreen");
+    const inventoryScreen = document.getElementById("inventoryScreen");
     const startBtn = document.getElementById("startBtn");
     const openBoardBtn = document.getElementById("openBoardBtn");
+    const openInventoryBtn = document.getElementById("openInventoryBtn");
+    const backFromInventory = document.getElementById("backFromInventory");
     const backHome = document.getElementById("backHome");
     const playAgain = document.getElementById("playAgain");
     const tbody = document.getElementById("leaderboardBody");
     const entriesMeta = document.getElementById("entriesMeta");
 
+    // Navigation buttons
+    const homeNavBtn = document.getElementById("homeNavBtn");
+    const gameNavBtn = document.getElementById("gameNavBtn");
+    const inventoryNavBtn = document.getElementById("inventoryNavBtn");
+    const leaderboardNavBtn = document.getElementById("leaderboardNavBtn");
+
     // Button sound effects
-    const allButtons = document.querySelectorAll('.btn');
+    const allButtons = document.querySelectorAll('.btn, .nav-btn');
     allButtons.forEach(button => {
       button.addEventListener('click', () => {
         popSound.currentTime = 0;
@@ -509,10 +748,60 @@
       });
     });
 
+    // Navigation controls
+    homeNavBtn.addEventListener("click", () => {
+      showHomeScreen();
+    });
+
+    gameNavBtn.addEventListener("click", () => {
+      showUserBadge(false);
+      homeScreen.style.display = "none";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      running = true;
+      gifElement.style.display = 'block';
+      bgMusic.play().catch(e => console.error("Error playing background music:", e));
+      requestAnimationFrame(loop);
+    });
+
+    inventoryNavBtn.addEventListener("click", () => {
+      showInventoryScreen();
+    });
+
+    leaderboardNavBtn.addEventListener("click", async () => {
+      await showLeaderboard();
+      boardScreen.style.display = "flex";
+      homeScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      showUserBadge(true);
+    });
+
+    function showHomeScreen() {
+      homeScreen.style.display = "flex";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
+      running = false;
+      gifElement.style.display = 'none';
+      bgMusic.pause();
+      bgMusic.currentTime = 0;
+      showUserBadge(true);
+    }
+
+    function showInventoryScreen() {
+      // Update coins display in inventory before showing
+      document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
+      homeScreen.style.display = "none";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "flex";
+      showUserBadge(true);
+    }
+
     // Game controls
     startBtn.addEventListener("click", () => {
       showUserBadge(false);
       homeScreen.style.display = "none";
+      boardScreen.style.display = "none";
+      inventoryScreen.style.display = "none";
       score = 0; obstacles = []; coins = [];
       rocket.x = window.innerWidth/2 - rocket.w/2;
       rocket.targetX = rocket.x;
@@ -523,37 +812,102 @@
       
       // Show animated rocket GIF
       gifElement.style.display = 'block';
-      rocketGif.style.display = 'block';
-      console.log("GIF display:", gifElement.style.display, rocketGif.style.display); // Debug
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
 
     openBoardBtn.addEventListener("click", async () => {
-      bgMusic.pause();
-      bgMusic.currentTime = 0;
-      gifElement.style.display = 'none';
       await showLeaderboard();
-      homeScreen.style.display = "none";
       boardScreen.style.display = "flex";
+      homeScreen.style.display = "none";
       showUserBadge(true);
     });
 
-    backHome.addEventListener("click", () => {
-      bgMusic.pause();
-      bgMusic.currentTime = 0;
-      gifElement.style.display = 'none';
-      boardScreen.style.display = "none";
-      homeScreen.style.display = "flex";
-      showUserBadge(true);
-    });
+    backFromInventory.addEventListener("click", showHomeScreen);
+
+    backHome.addEventListener("click", showHomeScreen);
 
     playAgain.addEventListener("click", () => {
       boardScreen.style.display = "none";
       showUserBadge(false);
       startBtn.click();
     });
+
+    // Inventory system
+    function populateInventory() {
+      const skinGrid = document.getElementById('skinGrid');
+      skinGrid.innerHTML = '';
+      
+      Object.entries(state.skins).forEach(([skinId, skinData]) => {
+        const isUnlocked = state.unlockedSkins.includes(skinId);
+        const isEquipped = state.currentSkin === skinId;
+        
+        const skinCard = document.createElement('div');
+        skinCard.className = `skin-card ${isEquipped ? 'equipped' : ''} ${!isUnlocked ? 'locked' : ''}`;
+        
+        skinCard.innerHTML = `
+          <div class="skin-preview">
+            <img src="${skinData.gif || skinData.png}" alt="${skinData.name} rocket skin preview" />
+          </div>
+          <div class="skin-name">${skinData.name}${!isUnlocked ? `<span class="price"> (${skinData.price})</span>` : ''}</div>
+        `;
+        
+        if (isUnlocked) {
+          skinCard.addEventListener('click', () => equipSkin(skinId));
+        } else {
+          skinCard.addEventListener('click', () => attemptUnlockSkin(skinId, skinData.price));
+        }
+        
+        skinGrid.appendChild(skinCard);
+      });
+    }
+
+    function equipSkin(skinId) {
+      if (!state.unlockedSkins.includes(skinId)) return;
+      
+      state.currentSkin = skinId;
+      const skinData = state.skins[skinId];
+      
+      // Update rocket images
+      rocketImg.src = skinData.png;
+      gifElement.src = skinData.gif;
+      
+      // Update UI
+      populateInventory();
+      
+      // Save to Firebase if logged in
+      if (currentUserId !== "guest_id") {
+        const userRef = ref(db, `users/${currentUserId}`);
+        update(userRef, { currentSkin: skinId });
+      }
+    }
+
+    function attemptUnlockSkin(skinId, price) {
+      if (userTotalCoins < price) {
+        alert(`You need ${price} coins to unlock this skin!`);
+        return;
+      }
+      
+      userTotalCoins -= price;
+      state.unlockedSkins.push(skinId);
+      
+      // Update UI
+      updateUserInfoDisplay();
+      populateInventory();
+      
+      // Save to Firebase if logged in
+      if (currentUserId !== "guest_id") {
+        const userRef = ref(db, `users/${currentUserId}`);
+        update(userRef, { 
+          totalCoins: userTotalCoins,
+          unlockedSkins: state.unlockedSkins 
+        });
+      }
+      
+      // Equip the new skin automatically
+      equipSkin(skinId);
+    }
 
     // Game over handler
     async function endGame() {
@@ -572,6 +926,8 @@
               username: currentUser,
               photo_url: photoUrl,
               totalCoins: score,
+              unlockedSkins: state.unlockedSkins,
+              currentSkin: state.currentSkin,
               createdAt: new Date().toISOString()
             };
           }
@@ -619,6 +975,11 @@
     }
 
     // Initialize
+    openInventoryBtn.addEventListener("click", () => {
+      populateInventory();
+      showInventoryScreen();
+    });
+
     updateUserInfoDisplay();
     showUserBadge(true);
   </script>
