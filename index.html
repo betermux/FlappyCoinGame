@@ -896,7 +896,7 @@
       entriesMeta.textContent = `${sortedUsers.length} players`;
     }
 
-    /* ===== Stars Animation (Ascending) ===== */
+    /* ===== Stars Animation ===== */
     const starsCanvas = document.getElementById('starsCanvas');
     const starsCtx = starsCanvas.getContext('2d');
     let stars = [];
@@ -913,10 +913,11 @@
       stars = [];
       for (let i = 0; i < numStars; i++) {
         stars.push({
-          x: Math.random() * starsCanvas.width,
-          y: Math.random() * starsCanvas.height, // Start anywhere on screen
+          x: Math.random() * starsCanvas.width - starsCanvas.width / 2, // Centered X
+          y: Math.random() * starsCanvas.height - starsCanvas.height / 2, // Centered Y
+          z: Math.random() * starsCanvas.width, // Z-depth for perspective
           size: Math.random() * 2 + 0.5, // Star size
-          vy: Math.random() * 1.5 + 0.5 // Vertical speed (downwards)
+          speed: Math.random() * 0.5 + 0.1 // Star speed
         });
       }
     }
@@ -928,20 +929,26 @@
       for (let i = 0; i < numStars; i++) {
         const star = stars[i];
 
-        // Move star downwards (simulating rocket ascending)
-        star.y += star.vy;
+        // Update Z position to simulate movement
+        star.z -= star.speed;
 
-        // If star moves off bottom, reset it to the top
-        if (star.y > starsCanvas.height) {
-          star.y = -star.size; // Reset above the canvas
-          star.x = Math.random() * starsCanvas.width; // New random X
+        // If star moves off screen (too close), reset it to the back
+        if (star.z <= 0) {
+          star.z = starsCanvas.width;
+          star.x = Math.random() * starsCanvas.width - starsCanvas.width / 2;
+          star.y = Math.random() * starsCanvas.height - starsCanvas.height / 2;
           star.size = Math.random() * 2 + 0.5;
-          star.vy = Math.random() * 1.5 + 0.5;
+          star.speed = Math.random() * 0.5 + 0.1;
         }
+
+        // Calculate perspective coordinates
+        const sx = (star.x / star.z) * starsCanvas.width + starsCanvas.width / 2;
+        const sy = (star.y / star.z) * starsCanvas.height + starsCanvas.height / 2;
+        const sSize = star.size * (starsCanvas.width / star.z); // Scale size by depth
 
         // Draw the star
         starsCtx.beginPath();
-        starsCtx.arc(star.x, star.y, star.size / 2, 0, Math.PI * 2);
+        starsCtx.arc(sx, sy, sSize / 2, 0, Math.PI * 2);
         starsCtx.fill();
       }
 
