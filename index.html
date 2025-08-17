@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Space Rocket · Full Game</title>
+  <title>BilzorX</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -23,7 +23,7 @@
       overflow: hidden;
     }
     h1, h2, .btn, th, td.score { font-family: 'Press Start 2P', cursive, monospace; }
-    
+
     /* Top-left user badge */
     #userInfo {
       position: fixed;
@@ -70,22 +70,6 @@
       margin: 0 auto;
       padding: 30px;
       position: relative;
-    }
-    #homeHero {
-      margin: 0 auto 30px;
-      width: 80%;
-      max-width: 400px;
-      aspect-ratio: 1;
-      filter: drop-shadow(0 0 20px rgba(88, 211, 255, 0.3));
-    }
-    .sub {
-      color: var(--muted);
-      margin: 4px 0 30px;
-      font-size: 18px;
-      line-height: 1.4;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
     }
     .btn-row {
       display: flex;
@@ -184,7 +168,7 @@
       height: 100%;
       display: none;
     }
-    
+
     /* Canvas */
     #gameCanvas {
       display: block;
@@ -195,7 +179,7 @@
       left: 0;
       z-index: 5;
     }
-    
+
     /* Buttons */
     .btn {
       border: 0;
@@ -263,13 +247,10 @@
     <span id="userCoins"></span>
   </div>
 
-  <!-- Home screen - now full screen -->
+  <!-- Home screen -->
   <div id="homeScreen" class="screen">
     <div class="home-content">
-      <!-- Removed the src attribute to remove the image -->
-      <img id="homeHero" class="floating" alt="Rocket hero image with glowing effect" />
-      <h1>SPACE ROCKET</h1>
-      <div class="sub">Collect coins to unlock new rocket skins! Swipe left/right to control your rocket and avoid obstacles.</div>
+      <h1>BilzorX</h1>
       <div class="btn-row">
         <button id="startBtn" class="btn">🚀 LAUNCH GAME</button>
         <button id="openBoardBtn" class="btn secondary">🏆 LEADERBOARD</button>
@@ -287,13 +268,9 @@
         <h2>🚀 ROCKET SKINS</h2>
         <p>Unlock new skins by collecting coins in the game</p>
       </div>
-      
-      <div class="skin-grid" id="skinGrid">
-        <!-- Skins will be added dynamically -->
-      </div>
-
+      <div class="skin-grid" id="skinGrid"></div>
       <div class="inventory-footer">
-        <button id="backFromInventory" class="btn">⬅ BACK</button>
+        <button id="backFromInventory" class="btn">⬅ BACK TO HOME</button>
         <div class="pill" id="coinsDisplay">COINS: 0</div>
       </div>
     </div>
@@ -431,17 +408,15 @@
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
         const snapshot = await get(userRef);
-        
+
         if (snapshot.exists()) {
           const existingData = snapshot.val();
           userTotalCoins = existingData.totalCoins || 0;
-          
-          // Load unlocked skins from Firebase
           if (existingData.unlockedSkins) {
             state.unlockedSkins = existingData.unlockedSkins;
             state.currentSkin = existingData.currentSkin || 'default';
           }
-          
+
           if (existingData.username !== currentUser || existingData.photo_url !== photoUrl) {
             await update(userRef, {
               username: currentUser,
@@ -466,9 +441,12 @@
         userTotalCoins = 0;
         userCoinsEl.textContent = `(Guest)`;
       }
-      
-      // Update coins display in inventory
+
       document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
+      // Update rocket images based on current skin
+      const skinData = state.skins[state.currentSkin];
+      rocketImg.src = skinData.png;
+      gifElement.src = skinData.gif;
     }
 
     /* ===== Canvas / Game ===== */
@@ -479,13 +457,11 @@
 
     // Preload images
     const rocketImg = new Image(); 
-    rocketImg.src = "assets/rocket.png";
+    rocketImg.src = state.skins[state.currentSkin].png;
     const obstacleImg = new Image(); 
     obstacleImg.src = "assets/obstacle.png";
     const coinImg = new Image(); 
     coinImg.src = "assets/coin.png";
-    const rocketGifImg = new Image(); 
-    rocketGifImg.src = "assets/rocket.gif";
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -535,7 +511,7 @@
     canvas.addEventListener("touchmove", e => {
       const currentTouchX = e.touches[0].clientX;
       const newTargetX = Math.max(0, Math.min(currentTouchX - rocket.w / 2, window.innerWidth - rocket.w));
-      
+
       if (newTargetX < rocket.x) {
         rocket.targetRotation = -ROTATION_ANGLE_RAD;
       } else if (newTargetX > rocket.x) {
@@ -588,11 +564,11 @@
     function loop(t) {
       if (!running) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       // Update rocket position
       rocket.x += (rocket.targetX - rocket.x) * rocket.speed;
       rocket.rotation += (rocket.targetRotation - rocket.rotation) * rocket.rotationSpeed;
-      
+
       // Update animated GIF position
       rocketGif.style.left = rocket.x + 'px';
       rocketGif.style.top = rocket.y + 'px';
@@ -634,7 +610,7 @@
       }
       coins = coins.filter(c => c.y < window.innerHeight + c.h + 22 && c.alpha > 0);
 
-      // Draw rocket.png on canvas (this is the one used for collision)
+      // Draw rocket.png on canvas
       if (rocketImg.complete) {
         ctx.save();
         ctx.globalAlpha = 1;
@@ -715,8 +691,11 @@
       rocket.rotation = 0;
       rocket.targetRotation = 0;
       running = true;
-      
-      // Show animated rocket GIF
+
+      // Ensure correct skin is loaded
+      const skinData = state.skins[state.currentSkin];
+      rocketImg.src = skinData.png;
+      gifElement.src = skinData.gif;
       gifElement.style.display = 'block';
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
@@ -754,44 +733,44 @@
     function populateInventory() {
       const skinGrid = document.getElementById('skinGrid');
       skinGrid.innerHTML = '';
-      
+
       Object.entries(state.skins).forEach(([skinId, skinData]) => {
         const isUnlocked = state.unlockedSkins.includes(skinId);
         const isEquipped = state.currentSkin === skinId;
-        
+
         const skinCard = document.createElement('div');
         skinCard.className = `skin-card ${isEquipped ? 'equipped' : ''} ${!isUnlocked ? 'locked' : ''}`;
-        
+
         skinCard.innerHTML = `
           <div class="skin-preview">
             <img src="${skinData.gif || skinData.png}" alt="${skinData.name} rocket skin preview" />
           </div>
           <div class="skin-name">${skinData.name}${!isUnlocked ? `<span class="price"> (${skinData.price})</span>` : ''}</div>
         `;
-        
+
         if (isUnlocked) {
           skinCard.addEventListener('click', () => equipSkin(skinId));
         } else {
           skinCard.addEventListener('click', () => attemptUnlockSkin(skinId, skinData.price));
         }
-        
+
         skinGrid.appendChild(skinCard);
       });
     }
 
     function equipSkin(skinId) {
       if (!state.unlockedSkins.includes(skinId)) return;
-      
+
       state.currentSkin = skinId;
       const skinData = state.skins[skinId];
-      
+
       // Update rocket images
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
-      
+
       // Update UI
       populateInventory();
-      
+
       // Save to Firebase if logged in
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
@@ -804,14 +783,14 @@
         alert(`You need ${price} coins to unlock this skin!`);
         return;
       }
-      
+
       userTotalCoins -= price;
       state.unlockedSkins.push(skinId);
-      
+
       // Update UI
       updateUserInfoDisplay();
       populateInventory();
-      
+
       // Save to Firebase if logged in
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
@@ -820,7 +799,7 @@
           unlockedSkins: state.unlockedSkins 
         });
       }
-      
+
       // Equip the new skin automatically
       equipSkin(skinId);
     }
@@ -862,7 +841,7 @@
       tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; 
       const usersRef = ref(db, "users");
       const snapshot = await get(usersRef);
-      
+
       if (!snapshot.exists()) {
         tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins collected yet.</td></tr>`; 
         entriesMeta.textContent = "0 players";
