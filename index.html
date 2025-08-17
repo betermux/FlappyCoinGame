@@ -399,9 +399,11 @@
       rocket.rotation += (rocket.targetRotation - rocket.rotation) * rocket.rotationSpeed;
       
       // Update animated GIF position
-      const screenY = window.innerHeight - rocket.y - rocket.h;
+      // The GIF's top position needs to be calculated relative to the canvas's top,
+      // which is at the top of the viewport. The rocket.y is measured from the top
+      // of the canvas.
       rocketGif.style.left = rocket.x + 'px';
-      rocketGif.style.top = screenY + 'px';
+      rocketGif.style.top = rocket.y + 'px'; // Set top directly to rocket.y
       rocketGif.style.transform = `rotate(${rocket.rotation}rad)`;
       // console.log("Rocket GIF Position:", rocketGif.style.left, rocketGif.style.top); // Uncomment for debugging
 
@@ -441,10 +443,11 @@
       }
       coins = coins.filter(c => c.y < window.innerHeight + c.h + 22 && c.alpha > 0);
 
-      // Draw invisible rocket for collision
+      // Draw rocket.png on canvas (this is the one used for collision)
       if (rocketImg.complete) {
         ctx.save();
-        ctx.globalAlpha = 0;
+        // For visual overlap, draw rocket.png with full opacity
+        ctx.globalAlpha = 1; 
         ctx.translate(rocket.x + rocket.w / 2, rocket.y + rocket.h / 2);
         ctx.rotate(rocket.rotation);
         ctx.drawImage(rocketImg, -rocket.w / 2, -rocket.h / 2, rocket.w, rocket.h);
@@ -518,7 +521,7 @@
       rocket.targetRotation = 0;
       running = true;
       
-      // Show animated rocket
+      // Show animated rocket GIF
       gifElement.style.display = 'block';
       rocketGif.style.display = 'block';
       console.log("GIF display:", gifElement.style.display, rocketGif.style.display); // Debug
