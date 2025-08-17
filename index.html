@@ -149,10 +149,16 @@
     }
     .inventory-footer {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       padding: 20px;
       margin-top: 20px;
       background: rgba(9, 12, 22, 0.8);
+    }
+    #backFromInventory {
+      position: absolute;
+      top: 12px;
+      left: 12px; /* Баруун дээдээс зүүн дээд буланд шилжүүлсэн */
+      z-index: 20;
     }
 
     /* Rocket GIF container */
@@ -263,6 +269,7 @@
 
   <!-- Inventory screen -->
   <div id="inventoryScreen" class="screen">
+    <button id="backFromInventory" class="btn">⬅ BACK TO HOME</button>
     <div id="inventoryContainer">
       <div class="inventory-header">
         <h2>🚀 ROCKET SKINS</h2>
@@ -270,7 +277,6 @@
       </div>
       <div class="skin-grid" id="skinGrid"></div>
       <div class="inventory-footer">
-        <button id="backFromInventory" class="btn">⬅ BACK TO HOME</button>
         <div class="pill" id="coinsDisplay">COINS: 0</div>
       </div>
     </div>
