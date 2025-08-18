@@ -212,8 +212,8 @@
       position: absolute;
       pointer-events: none;
       display: none;
-      width: 100px; /* Adjust size as needed */
-      height: 100px; /* Adjust size as needed */
+      width: 530px; /* Adjusted to Nyan Cat GIF dimensions */
+      height: 210px; /* Adjusted to Nyan Cat GIF dimensions */
       z-index: 11;
       transition: transform 0.1s ease-out, opacity 0.1s ease-out; /* For collect animation */
     }
@@ -340,6 +340,11 @@
       #pauseBtn {
         padding: 6px 12px;
         font-size: 12px;
+      }
+      /* Adjust NYAN Cat GIF for smaller screens if needed */
+      #nyanCatGif {
+        width: 265px; /* Half of 530px */
+        height: 105px; /* Half of 210px */
       }
     }
   </style>
@@ -508,6 +513,13 @@
     let userTotalCoins = 0;
     let userNyanCoins = 0; // Track total NYAN coins for the user
 
+    const user = tg?.initDataUnsafe?.user;
+    if (user) {
+      currentUserId = user.id.toString();
+      currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
+      photoUrl = user.photo_url || "";
+    }
+
     const userInfo = document.getElementById("userInfo");
     const userNameEl = document.getElementById("userName");
     const userPhotoEl = document.getElementById("userPhoto");
@@ -535,7 +547,10 @@
             state.currentSkin = existingData.currentSkin || 'default';
           }
 
-          if (existingData.username !== currentUser || existingData.photo_url !== photoUrl) {
+          // Only update Firebase if user data has changed or if it's a new user
+          // This prevents unnecessary writes on every page load if data is identical
+          if (existingData.username !== currentUser || existingData.photo_url !== photoUrl ||
+              !existingData.unlockedSkins || !existingData.currentSkin || existingData.nyanCoins === undefined) { // Check if new fields exist
             await update(userRef, {
               username: currentUser,
               photo_url: photoUrl,
@@ -690,7 +705,10 @@
     }
 
     function spawnCoin() {
-      const size = 44;
+      const size = 44; // Collision size for the invisible NYAN coin
+      const nyanCatWidth = nyanCatGif.offsetWidth; // Actual width of the GIF
+      const nyanCatHeight = nyanCatGif.offsetHeight; // Actual height of the GIF
+
       const isNyanCoin = (coinsCollectedSinceLastNyan >= 50); // Check if it's time for a NYAN coin
 
       let coinType = 'normal';
@@ -705,12 +723,12 @@
         // Determine starting side and direction for NYAN cat
         if (Math.random() < 0.5) { // Start from left
             vx = 2; // Move right
-            // Start off-screen left
+            // Start off-screen left, adjust for nyanCatGif's width
             coins.push({
-                x: -size,
+                x: -nyanCatWidth, // Start fully off-screen
                 y: Math.random() * (window.innerHeight / 2), // Spawn higher up
-                w: size,
-                h: size,
+                w: size, // Collision width
+                h: size, // Collision height
                 vy: 1, // Slower vertical movement
                 vx: vx,
                 alpha: 1,
@@ -720,12 +738,12 @@
             });
         } else { // Start from right
             vx = -2; // Move left
-            // Start off-screen right
+            // Start off-screen right, adjust for nyanCatGif's width
             coins.push({
-                x: window.innerWidth,
+                x: window.innerWidth, // Start fully off-screen
                 y: Math.random() * (window.innerHeight / 2), // Spawn higher up
-                w: size,
-                h: size,
+                w: size, // Collision width
+                h: size, // Collision height
                 vy: 1, // Slower vertical movement
                 vx: vx,
                 alpha: 1,
@@ -783,20 +801,6 @@
       if (Math.random() < 0.008) spawnObstacle();
       if (Math.random() < 0.02) spawnCoin();
 
-      // Draw and update obstacles
-      for (const o of obstacles) {
-        o.y += o.vy;
-        o.rotation += o.rotationSpeed;
-        if (obstacleImg.complete) {
-          ctx.save();
-          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
-          ctx.rotate(o.rotation);
-          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
-          ctx.restore();
-        }
-      }
-      obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40);
-
       // Draw and update coins
       let nyanCoinActive = false; // Flag to track if a NYAN coin is currently on screen
       for (const c of coins) {
@@ -815,16 +819,17 @@
           ctx.drawImage(c.image, c.x, c.y, c.w, c.h);
           ctx.restore();
         } else if (c.type === 'nyan' && !c.collected) {
-            // Position NYAN Cat GIF to follow the invisible NYAN coin
+            // Position NYAN Cat GIF to follow the invisible NYAN coin's center
+            // Adjust for nyanCatGif's actual dimensions to center it on the collision box
             nyanCatGif.style.display = 'block';
-            nyanCatGif.style.left = `${c.x - (nyanCatGif.offsetWidth / 2) + (c.w / 2)}px`;
-            nyanCatGif.style.top = `${c.y - (nyanCatGif.offsetHeight / 2) + (c.h / 2)}px`;
+            nyanCatGif.style.left = `${c.x + (c.w / 2) - (nyanCatGif.offsetWidth / 2)}px`;
+            nyanCatGif.style.top = `${c.y + (c.h / 2) - (nyanCatGif.offsetHeight / 2)}px`;
             nyanCatGif.style.opacity = 1; // Ensure it's visible
             nyanCatGif.classList.remove('collecting'); // Remove collecting class if not collecting
             nyanCoinActive = true;
         }
       }
-      // If no NYAN coin is active, hide the GIF
+      // If no NYAN coin is active, hide the GIF (unless it's currently animating a collection)
       if (!nyanCoinActive && !nyanCatGif.classList.contains('collecting')) {
           nyanCatGif.style.display = 'none';
       }
@@ -862,7 +867,7 @@
                 nyanCatGif.classList.remove('collecting');
                 nyanCatGif.style.opacity = 1; // Reset opacity for next time
                 nyanCatGif.style.transform = 'scale(1)'; // Reset scale for next time
-            }, 100); // Animation duration
+            }, 100); // Animation duration (matches CSS transition)
           }
           coins[i].collected = true;
           const playSound = new Audio('assets/coincollect.mp3');
@@ -956,6 +961,8 @@
       gifElement.style.display = 'block';
       nyanCatGif.style.display = 'none'; // Ensure NYAN cat is hidden at start of game
       nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
+      nyanCatGif.style.opacity = 1; // Reset opacity
+      nyanCatGif.style.transform = 'scale(1)'; // Reset scale
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
@@ -1143,6 +1150,8 @@
       gifElement.style.display = 'none';
       nyanCatGif.style.display = 'none'; // Hide NYAN cat when game ends
       nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
+      nyanCatGif.style.opacity = 1; // Reset opacity
+      nyanCatGif.style.transform = 'scale(1)'; // Reset scale
       pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
@@ -1159,7 +1168,7 @@
               photo_url: photoUrl,
               totalCoins: score,
               nyanCoins: nyanScore,
-              unlockedSkins: state.unlockedSlockedSkins, // Typo fixed here
+              unlockedSkins: state.unlockedSkins, // Corrected typo here
               currentSkin: state.currentSkin,
               createdAt: new Date().toISOString()
             };
