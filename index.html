@@ -784,8 +784,23 @@
       rocketGif.style.transform = `rotate(${rocket.rotation}rad)`;
 
       // Spawn objects
-      if (Math.random() < 0.008) spawnObstacle();
+      if (Math.random() < 0.008) spawnObstacle(); // Re-added obstacle spawning
       if (Math.random() < 0.02) spawnCoin();
+
+      // Draw and update obstacles
+      for (const o of obstacles) { // Re-added obstacle drawing and updating
+        o.y += o.vy;
+        o.rotation += o.rotationSpeed;
+        if (obstacleImg.complete) {
+          ctx.save();
+          ctx.translate(o.x + o.w / 2, o.y + o.h / 2);
+          ctx.rotate(o.rotation);
+          ctx.drawImage(obstacleImg, -o.w / 2, -o.h / 2, o.w, o.h);
+          ctx.restore();
+        }
+      }
+      obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40); // Re-added obstacle filtering
+
 
       // Draw and update coins
       let nyanCoinCollisionObjectActive = false; // Flag to track if the invisible NYAN coin is currently on screen
@@ -798,7 +813,7 @@
           if (c.alpha < 0) c.alpha = 0;
         }
 
-        // Draw normal coins on canvas
+        // Only draw normal coins on canvas
         if (c.type === 'normal' && c.image.complete && c.alpha > 0) {
           ctx.save();
           ctx.globalAlpha = c.alpha;
@@ -854,7 +869,7 @@
       }
 
       // Collision detection
-      for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } }
+      for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } } // Re-added obstacle collision
       for (let i = coins.length - 1; i >= 0; i--) {
         if (!coins[i].collected && hit(rocket, coins[i])) {
           if (coins[i].type === 'normal') {
@@ -892,9 +907,9 @@
 
     // Collision detection
     function hit(a, b) {
+      // This function checks collision for all objects that are meant to be hit.
       // NYAN Cat GIF itself does not have collision.
       // The invisible NYAN coin (b.type === 'nyan') *does* have collision.
-      // This function checks collision for all objects that are meant to be hit.
 
       const aX = a.x + a.collisionOffsetX;
       const aY = a.y + a.collisionOffsetY;
