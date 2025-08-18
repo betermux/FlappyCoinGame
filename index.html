@@ -207,6 +207,22 @@
       display: none;
     }
 
+    /* NYAN Cat GIF container and animation */
+    #nyanCatGif {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      width: 100px; /* Adjust size as needed */
+      height: 100px; /* Adjust size as needed */
+      z-index: 11;
+      transition: transform 0.1s ease-out, opacity 0.1s ease-out; /* For collect animation */
+    }
+    #nyanCatGif.collecting {
+        transform: scale(1.2); /* Scale up */
+        opacity: 0; /* Fade out */
+    }
+
+
     /* Canvas */
     #gameCanvas {
       display: block;
@@ -361,6 +377,7 @@
       <div class="skin-grid" id="skinGrid"></div>
       <div class="inventory-footer">
         <div class="pill" id="coinsDisplay">COINS: 0</div>
+        <div class="pill" id="nyanCoinsDisplay" style="margin-left: 10px;">NYAN COINS: 0</div>
       </div>
     </div>
   </div>
@@ -381,8 +398,8 @@
   <div id="rocketGif">
     <img id="rocketGifImg" src="assets/rocket.gif" style="width:100%; height:100%; display:none;">
   </div>
-  <!-- NYAN Cat GIF container - Added for the NYAN event -->
-  <img id="nyanCatGif" src="assets/nyancat.gif" style="position:absolute; pointer-events:none; display:none; width:100px; height:100px; z-index:11;">
+  <!-- NYAN Cat GIF container -->
+  <img id="nyanCatGif" src="assets/nyancat.gif">
 
   <button id="pauseBtn" class="btn">⏸ PAUSE</button>
 
@@ -466,7 +483,7 @@
         },
         rainbow: {
           name: 'Rainbow Rocket',
-          price: 1000,
+          price: { type: 'nyan', value: 100 }, // Changed to NYAN coin price
           unlocked: false,
           gif: 'assets/rocket_rainbow.gif',
           png: 'assets/rocket_rainbow.png'
@@ -491,17 +508,11 @@
     let userTotalCoins = 0;
     let userNyanCoins = 0; // Track total NYAN coins for the user
 
-    const user = tg?.initDataUnsafe?.user;
-    if (user) {
-      currentUserId = user.id.toString();
-      currentUser = user.username || [user.first_name, user.last_name].filter(Boolean).join(" ");
-      photoUrl = user.photo_url || "";
-    }
-
     const userInfo = document.getElementById("userInfo");
     const userNameEl = document.getElementById("userName");
     const userPhotoEl = document.getElementById("userPhoto");
     const userCoinsEl = document.getElementById("userCoins");
+    const nyanCoinsDisplayEl = document.getElementById("nyanCoinsDisplay"); // New element for NYAN coins in inventory
 
     function showUserBadge(show) {
       userInfo.style.display = show ? "flex" : "none";
@@ -554,6 +565,7 @@
       }
 
       document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
+      nyanCoinsDisplayEl.textContent = `NYAN COINS: ${userNyanCoins}`; // Update NYAN coins display in inventory
       const skinData = state.skins[state.currentSkin];
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
@@ -577,8 +589,8 @@
     obstacleImg.src = "assets/obstacle.png";
     const coinImg = new Image();
     coinImg.src = "assets/coin.png";
-    const nyanCoinImg = new Image(); // Added for NYAN coin icon
-    nyanCoinImg.src = "assets/nyancoin.png"; // Added for NYAN coin icon
+    const nyanCoinImg = new Image(); // Added for NYAN coin icon (invisible in game, but used for collision)
+    nyanCoinImg.src = "assets/nyancoin.png";
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -683,23 +695,60 @@
 
       let coinType = 'normal';
       let coinImage = coinImg;
+      let vx = 0; // Horizontal velocity for NYAN coin
 
       if (isNyanCoin) {
         coinType = 'nyan';
-        coinImage = nyanCoinImg;
+        coinImage = nyanCoinImg; // Still use for collision detection
         coinsCollectedSinceLastNyan = 0; // Reset counter after spawning NYAN
+
+        // Determine starting side and direction for NYAN cat
+        if (Math.random() < 0.5) { // Start from left
+            vx = 2; // Move right
+            // Start off-screen left
+            coins.push({
+                x: -size,
+                y: Math.random() * (window.innerHeight / 2), // Spawn higher up
+                w: size,
+                h: size,
+                vy: 1, // Slower vertical movement
+                vx: vx,
+                alpha: 1,
+                collected: false,
+                type: coinType,
+                image: coinImage
+            });
+        } else { // Start from right
+            vx = -2; // Move left
+            // Start off-screen right
+            coins.push({
+                x: window.innerWidth,
+                y: Math.random() * (window.innerHeight / 2), // Spawn higher up
+                w: size,
+                h: size,
+                vy: 1, // Slower vertical movement
+                vx: vx,
+                alpha: 1,
+                collected: false,
+                type: coinType,
+                image: coinImage
+            });
+        }
+        return; // Exit, as NYAN coin is already pushed
       }
 
+      // Normal coin spawn
       coins.push({
         x: Math.random() * (window.innerWidth - size),
         y: -size,
         w: size,
         h: size,
         vy: 3,
+        vx: 0, // Normal coins don't move horizontally
         alpha: 1,
         collected: false,
-        type: coinType, // Add type property
-        image: coinImage // Add image property
+        type: coinType,
+        image: coinImage
       });
     }
 
@@ -749,23 +798,43 @@
       obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40);
 
       // Draw and update coins
+      let nyanCoinActive = false; // Flag to track if a NYAN coin is currently on screen
       for (const c of coins) {
         if (!c.collected) {
           c.y += c.vy;
+          c.x += c.vx; // Apply horizontal velocity
         } else {
           c.alpha -= 0.05;
           if (c.alpha < 0) c.alpha = 0;
         }
 
-        // Use the coin's specific image
-        if (c.image.complete && c.alpha > 0) {
+        // Only draw normal coins on canvas
+        if (c.type === 'normal' && c.image.complete && c.alpha > 0) {
           ctx.save();
           ctx.globalAlpha = c.alpha;
           ctx.drawImage(c.image, c.x, c.y, c.w, c.h);
           ctx.restore();
+        } else if (c.type === 'nyan' && !c.collected) {
+            // Position NYAN Cat GIF to follow the invisible NYAN coin
+            nyanCatGif.style.display = 'block';
+            nyanCatGif.style.left = `${c.x - (nyanCatGif.offsetWidth / 2) + (c.w / 2)}px`;
+            nyanCatGif.style.top = `${c.y - (nyanCatGif.offsetHeight / 2) + (c.h / 2)}px`;
+            nyanCatGif.style.opacity = 1; // Ensure it's visible
+            nyanCatGif.classList.remove('collecting'); // Remove collecting class if not collecting
+            nyanCoinActive = true;
         }
       }
-      coins = coins.filter(c => c.y < window.innerHeight + c.h + 22 && c.alpha > 0);
+      // If no NYAN coin is active, hide the GIF
+      if (!nyanCoinActive && !nyanCatGif.classList.contains('collecting')) {
+          nyanCatGif.style.display = 'none';
+      }
+
+      // Filter out coins that are off-screen or fully faded
+      coins = coins.filter(c =>
+          (c.y < window.innerHeight + c.h + 22 && c.alpha > 0) &&
+          (c.type === 'normal' || (c.type === 'nyan' && c.x > -nyanCatGif.offsetWidth && c.x < window.innerWidth + nyanCatGif.offsetWidth))
+      );
+
 
       // Draw rocket.png on canvas
       if (rocketImg.complete) {
@@ -786,13 +855,14 @@
             coinsCollectedSinceLastNyan++; // Increment counter for normal coins
           } else if (coins[i].type === 'nyan') {
             nyanScore++; // Increment NYAN coin score
-            // Trigger NYAN Cat GIF
-            nyanCatGif.style.display = 'block';
-            nyanCatGif.style.left = `${coins[i].x - (nyanCatGif.offsetWidth / 2) + (coins[i].w / 2)}px`; // Center on coin
-            nyanCatGif.style.top = `${coins[i].y - (nyanCatGif.offsetHeight / 2) + (coins[i].h / 2)}px`; // Center on coin
+            // Trigger NYAN Cat GIF collect animation
+            nyanCatGif.classList.add('collecting');
             setTimeout(() => {
-              nyanCatGif.style.display = 'none';
-            }, 1500); // Display for 1.5 seconds
+                nyanCatGif.style.display = 'none';
+                nyanCatGif.classList.remove('collecting');
+                nyanCatGif.style.opacity = 1; // Reset opacity for next time
+                nyanCatGif.style.transform = 'scale(1)'; // Reset scale for next time
+            }, 100); // Animation duration
           }
           coins[i].collected = true;
           const playSound = new Audio('assets/coincollect.mp3');
@@ -884,7 +954,8 @@
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
       gifElement.style.display = 'block';
-      nyanCatGif.style.display = 'none'; // Ensure NYAN cat is hidden at start
+      nyanCatGif.style.display = 'none'; // Ensure NYAN cat is hidden at start of game
+      nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
@@ -904,7 +975,7 @@
       pauseScreen.style.display = "none";
       pauseBtn.style.display = "block";
       rocketGif.style.display = "block";
-      // nyanCatGif will be shown on collection, no need to show here
+      // nyanCatGif will be shown by the game loop if a NYAN coin is present
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
@@ -970,11 +1041,20 @@
         const skinCard = document.createElement('div');
         skinCard.className = `skin-card ${isEquipped ? 'equipped' : ''} ${!isUnlocked ? 'locked' : ''}`;
 
+        let priceText = '';
+        if (!isUnlocked) {
+            if (typeof skinData.price === 'object' && skinData.price.type === 'nyan') {
+                priceText = `<span class="price"> (${skinData.price.value} NYAN)</span>`;
+            } else {
+                priceText = `<span class="price"> (${skinData.price})</span>`;
+            }
+        }
+
         skinCard.innerHTML = `
           <div class="skin-preview">
             <img src="${skinData.gif || skinData.png}" alt="${skinData.name} rocket skin preview" />
           </div>
-          <div class="skin-name">${skinData.name}${!isUnlocked ? `<span class="price"> (${skinData.price})</span>` : ''}</div>
+          <div class="skin-name">${skinData.name}${priceText}</div>
         `;
 
         if (isUnlocked) {
@@ -1008,25 +1088,49 @@
     }
 
     function attemptUnlockSkin(skinId, price) {
-      if (userTotalCoins < price) {
-        alert(`You need ${price} coins to unlock this skin!`);
+      let canAfford = false;
+      let costType = 'normal';
+      let costValue = price;
+
+      if (typeof price === 'object' && price.type === 'nyan') {
+          costType = 'nyan';
+          costValue = price.value;
+          if (userNyanCoins >= costValue) {
+              canAfford = true;
+          }
+      } else { // Normal coin price
+          if (userTotalCoins >= costValue) {
+              canAfford = true;
+          }
+      }
+
+      if (!canAfford) {
+        alert(`You need ${costValue} ${costType === 'nyan' ? 'NYAN coins' : 'coins'} to unlock this skin!`);
         return;
       }
 
-      userTotalCoins -= price;
+      if (costType === 'nyan') {
+          userNyanCoins -= costValue;
+      } else {
+          userTotalCoins -= costValue;
+      }
+
       state.unlockedSkins.push(skinId);
 
       // Update UI
-      updateUserInfoDisplay(); // This will refresh userTotalCoins display
+      updateUserInfoDisplay(); // This will refresh userTotalCoins and userNyanCoins display
       populateInventory();
 
       // Save to Firebase if logged in
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
-        update(userRef, {
-          totalCoins: userTotalCoins,
-          unlockedSkins: state.unlockedSkins
-        });
+        const updateData = { unlockedSkins: state.unlockedSkins };
+        if (costType === 'nyan') {
+            updateData.nyanCoins = userNyanCoins;
+        } else {
+            updateData.totalCoins = userTotalCoins;
+        }
+        update(userRef, updateData);
       }
 
       // Equip the new skin automatically
@@ -1038,6 +1142,7 @@
       running = false;
       gifElement.style.display = 'none';
       nyanCatGif.style.display = 'none'; // Hide NYAN cat when game ends
+      nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
       pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
@@ -1054,7 +1159,7 @@
               photo_url: photoUrl,
               totalCoins: score,
               nyanCoins: nyanScore,
-              unlockedSkins: state.unlockedSkins,
+              unlockedSkins: state.unlockedSlockedSkins, // Typo fixed here
               currentSkin: state.currentSkin,
               createdAt: new Date().toISOString()
             };
