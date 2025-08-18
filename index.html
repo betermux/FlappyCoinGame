@@ -381,6 +381,9 @@
   <div id="rocketGif">
     <img id="rocketGifImg" src="assets/rocket.gif" style="width:100%; height:100%; display:none;">
   </div>
+  <!-- NYAN Cat GIF container - Added for the NYAN event -->
+  <img id="nyanCatGif" src="assets/nyancat.gif" style="position:absolute; pointer-events:none; display:none; width:100px; height:100px; z-index:11;">
+
   <button id="pauseBtn" class="btn">⏸ PAUSE</button>
 
   <!-- Leaderboard screen -->
@@ -396,7 +399,8 @@
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Coin (Total)</th>
+              <th>Coins</th> <!-- Changed from Coin (Total) -->
+              <th>NYAN Coins</th> <!-- Added NYAN Coins column -->
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
@@ -419,7 +423,7 @@
   <script type="module">
     /* ===== Firebase ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-    import { getDatabase, ref, get, set, update, child, runTransaction } 
+    import { getDatabase, ref, get, set, update, child, runTransaction }
       from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -485,6 +489,7 @@
     let currentUserId = "guest_id";
     let photoUrl = "";
     let userTotalCoins = 0;
+    let userNyanCoins = 0; // Track total NYAN coins for the user
 
     const user = tg?.initDataUnsafe?.user;
     if (user) {
@@ -513,6 +518,7 @@
         if (snapshot.exists()) {
           const existingData = snapshot.val();
           userTotalCoins = existingData.totalCoins || 0;
+          userNyanCoins = existingData.nyanCoins || 0; // Retrieve NYAN coins
           if (existingData.unlockedSkins) {
             state.unlockedSkins = existingData.unlockedSkins;
             state.currentSkin = existingData.currentSkin || 'default';
@@ -523,15 +529,18 @@
               username: currentUser,
               photo_url: photoUrl,
               unlockedSkins: state.unlockedSkins,
-              currentSkin: state.currentSkin
+              currentSkin: state.currentSkin,
+              nyanCoins: userNyanCoins // Ensure NYAN coins are updated if other user data changes
             });
           }
         } else {
           userTotalCoins = 0;
+          userNyanCoins = 0; // Initialize NYAN coins for new users
           await set(userRef, {
             username: currentUser,
             photo_url: photoUrl,
             totalCoins: 0,
+            nyanCoins: 0, // Store NYAN coins
             unlockedSkins: state.unlockedSkins,
             currentSkin: state.currentSkin,
             createdAt: new Date().toISOString()
@@ -540,6 +549,7 @@
         userCoinsEl.textContent = `🪙 ${userTotalCoins}`;
       } else {
         userTotalCoins = 0;
+        userNyanCoins = 0; // Reset for guest
         userCoinsEl.textContent = `(Guest)`;
       }
 
@@ -554,18 +564,21 @@
     const ctx = canvas.getContext("2d");
     const rocketGif = document.getElementById("rocketGif");
     const gifElement = document.getElementById("rocketGifImg");
+    const nyanCatGif = document.getElementById("nyanCatGif"); // Get the NYAN Cat GIF element
     const pauseBtn = document.getElementById("pauseBtn");
     const pauseScreen = document.getElementById("pauseScreen");
     const resumeGame = document.getElementById("resumeGame");
     const goHomeFromPause = document.getElementById("goHomeFromPause");
 
     // Preload images
-    const rocketImg = new Image(); 
+    const rocketImg = new Image();
     rocketImg.src = state.skins[state.currentSkin].png;
-    const obstacleImg = new Image(); 
+    const obstacleImg = new Image();
     obstacleImg.src = "assets/obstacle.png";
-    const coinImg = new Image(); 
+    const coinImg = new Image();
     coinImg.src = "assets/coin.png";
+    const nyanCoinImg = new Image(); // Added for NYAN coin icon
+    nyanCoinImg.src = "assets/nyancoin.png"; // Added for NYAN coin icon
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -583,10 +596,10 @@
     coinCollectSound.volume = 0.5;
 
     // Rocket properties
-    let rocket = { 
-      x: window.innerWidth/2 - 50, 
-      y: window.innerHeight - 200, 
-      w: 100, 
+    let rocket = {
+      x: window.innerWidth/2 - 50,
+      y: window.innerHeight - 200,
+      w: 100,
       h: 100,
       targetX: window.innerWidth/2 - 50,
       speed: 0.15,
@@ -611,15 +624,17 @@
     }
 
     // Game state
-    let running = false, score = 0;
+    let running = false, score = 0; // Regular coins collected in current game
+    let nyanScore = 0; // NYAN coins collected in current game
+    let coinsCollectedSinceLastNyan = 0; // Counter for normal coins to trigger NYAN
     let obstacles = [], coins = [];
     let touchStartX = null;
 
     const ROTATION_ANGLE_RAD = 10 * Math.PI / 180;
 
     // Touch controls
-    canvas.addEventListener("touchstart", e => { 
-      touchStartX = e.touches[0].clientX; 
+    canvas.addEventListener("touchstart", e => {
+      touchStartX = e.touches[0].clientX;
       rocket.targetX = Math.max(0, Math.min(e.touches[0].clientX - rocket.w / 2, window.innerWidth - rocket.w));
     }, { passive: true });
 
@@ -651,27 +666,40 @@
       const size = 72;
       const obstacleCollisionPadding = 18;
       obstacles.push({
-        x: Math.random() * (window.innerWidth - size), 
-        y: -size, 
-        w: size, 
-        h: size, 
-        vy: 3, 
-        rotation: 0, 
+        x: Math.random() * (window.innerWidth - size),
+        y: -size,
+        w: size,
+        h: size,
+        vy: 3,
+        rotation: 0,
         rotationSpeed: (Math.random() - 0.5) * 0.05,
         collisionPadding: obstacleCollisionPadding
-      }); 
+      });
     }
 
     function spawnCoin() {
       const size = 44;
+      const isNyanCoin = (coinsCollectedSinceLastNyan >= 50); // Check if it's time for a NYAN coin
+
+      let coinType = 'normal';
+      let coinImage = coinImg;
+
+      if (isNyanCoin) {
+        coinType = 'nyan';
+        coinImage = nyanCoinImg;
+        coinsCollectedSinceLastNyan = 0; // Reset counter after spawning NYAN
+      }
+
       coins.push({
-        x: Math.random() * (window.innerWidth - size), 
-        y: -size, 
-        w: size, 
-        h: size, 
+        x: Math.random() * (window.innerWidth - size),
+        y: -size,
+        w: size,
+        h: size,
         vy: 3,
         alpha: 1,
-        collected: false
+        collected: false,
+        type: coinType, // Add type property
+        image: coinImage // Add image property
       });
     }
 
@@ -707,8 +735,8 @@
       if (Math.random() < 0.02) spawnCoin();
 
       // Draw and update obstacles
-      for (const o of obstacles) { 
-        o.y += o.vy; 
+      for (const o of obstacles) {
+        o.y += o.vy;
         o.rotation += o.rotationSpeed;
         if (obstacleImg.complete) {
           ctx.save();
@@ -721,18 +749,19 @@
       obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40);
 
       // Draw and update coins
-      for (const c of coins) { 
+      for (const c of coins) {
         if (!c.collected) {
-          c.y += c.vy; 
+          c.y += c.vy;
         } else {
           c.alpha -= 0.05;
           if (c.alpha < 0) c.alpha = 0;
         }
 
-        if (coinImg.complete && c.alpha > 0) {
+        // Use the coin's specific image
+        if (c.image.complete && c.alpha > 0) {
           ctx.save();
           ctx.globalAlpha = c.alpha;
-          ctx.drawImage(coinImg, c.x, c.y, c.w, c.h); 
+          ctx.drawImage(c.image, c.x, c.y, c.w, c.h);
           ctx.restore();
         }
       }
@@ -750,20 +779,43 @@
 
       // Collision detection
       for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } }
-      for (let i = coins.length - 1; i >= 0; i--) { 
-        if (!coins[i].collected && hit(rocket, coins[i])) { 
-          score++; 
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (!coins[i].collected && hit(rocket, coins[i])) {
+          if (coins[i].type === 'normal') {
+            score++;
+            coinsCollectedSinceLastNyan++; // Increment counter for normal coins
+          } else if (coins[i].type === 'nyan') {
+            nyanScore++; // Increment NYAN coin score
+            // Trigger NYAN Cat GIF
+            nyanCatGif.style.display = 'block';
+            nyanCatGif.style.left = `${coins[i].x - (nyanCatGif.offsetWidth / 2) + (coins[i].w / 2)}px`; // Center on coin
+            nyanCatGif.style.top = `${coins[i].y - (nyanCatGif.offsetHeight / 2) + (coins[i].h / 2)}px`; // Center on coin
+            setTimeout(() => {
+              nyanCatGif.style.display = 'none';
+            }, 1500); // Display for 1.5 seconds
+          }
           coins[i].collected = true;
           const playSound = new Audio('assets/coincollect.mp3');
           playSound.volume = 0.5;
           playSound.play().catch(e => console.error("Error playing sound:", e));
-        } 
+        }
       }
 
       // Draw HUD
-      ctx.fillStyle = "#eaf2ff"; 
+      ctx.fillStyle = "#eaf2ff";
       ctx.font = "20px 'Press Start 2P'";
-      ctx.fillText("Coin: " + score, 12, 28);
+
+      // Draw regular coin icon and score
+      if (coinImg.complete) {
+        ctx.drawImage(coinImg, 12, 8, 20, 20); // Adjust position and size as needed
+      }
+      ctx.fillText(": " + score, 38, 28); // Adjust text position
+
+      // Draw NYAN coin icon and score
+      if (nyanCoinImg.complete) {
+        ctx.drawImage(nyanCoinImg, 12, 38, 20, 20); // Adjust position and size
+      }
+      ctx.fillText(": " + nyanScore, 38, 58); // Adjust text position
 
       requestAnimationFrame(loop);
     }
@@ -775,7 +827,7 @@
       const aW = a.w - a.collisionWidthShrink;
       const aH = a.h - a.collisionHeightShrink;
 
-      const bPadding = b.collisionPadding !== undefined ? b.collisionPadding : 0; 
+      const bPadding = b.collisionPadding !== undefined ? b.collisionPadding : 0;
       const bX = b.x + bPadding;
       const bY = b.y + bPadding;
       const bW = b.w - (bPadding * 2);
@@ -814,7 +866,12 @@
       inventoryScreen.style.display = "none";
       pauseScreen.style.display = "none";
       pauseBtn.style.display = "block";
-      score = 0; obstacles = []; coins = []; stars = [];
+      score = 0;
+      nyanScore = 0; // Reset NYAN score for new game
+      coinsCollectedSinceLastNyan = 0; // Reset NYAN counter for new game
+      obstacles = [];
+      coins = [];
+      stars = [];
       rocket.x = window.innerWidth/2 - rocket.w/2;
       rocket.targetX = rocket.x;
       rocket.y = window.innerHeight - 200;
@@ -827,6 +884,7 @@
       rocketImg.src = skinData.png;
       gifElement.src = skinData.gif;
       gifElement.style.display = 'block';
+      nyanCatGif.style.display = 'none'; // Ensure NYAN cat is hidden at start
 
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
@@ -838,6 +896,7 @@
       pauseScreen.style.display = "flex";
       pauseBtn.style.display = "none";
       rocketGif.style.display = "none";
+      nyanCatGif.style.display = 'none'; // Hide NYAN cat if paused
     });
 
     resumeGame.addEventListener("click", () => {
@@ -845,6 +904,7 @@
       pauseScreen.style.display = "none";
       pauseBtn.style.display = "block";
       rocketGif.style.display = "block";
+      // nyanCatGif will be shown on collection, no need to show here
       bgMusic.play().catch(e => console.error("Error playing background music:", e));
       requestAnimationFrame(loop);
     });
@@ -857,6 +917,7 @@
       inventoryScreen.style.display = "none";
       pauseBtn.style.display = "none";
       rocketGif.style.display = "none";
+      nyanCatGif.style.display = 'none'; // Hide NYAN cat when going home
       bgMusic.pause();
       bgMusic.currentTime = 0;
       showUserBadge(true);
@@ -956,15 +1017,15 @@
       state.unlockedSkins.push(skinId);
 
       // Update UI
-      updateUserInfoDisplay();
+      updateUserInfoDisplay(); // This will refresh userTotalCoins display
       populateInventory();
 
       // Save to Firebase if logged in
       if (currentUserId !== "guest_id") {
         const userRef = ref(db, `users/${currentUserId}`);
-        update(userRef, { 
+        update(userRef, {
           totalCoins: userTotalCoins,
-          unlockedSkins: state.unlockedSkins 
+          unlockedSkins: state.unlockedSkins
         });
       }
 
@@ -976,6 +1037,7 @@
     async function endGame() {
       running = false;
       gifElement.style.display = 'none';
+      nyanCatGif.style.display = 'none'; // Hide NYAN cat when game ends
       pauseBtn.style.display = "none";
       bgMusic.pause();
       bgMusic.currentTime = 0;
@@ -984,12 +1046,14 @@
         const userRef = ref(db, `users/${currentUserId}`);
         await runTransaction(userRef, (currentData) => {
           if (currentData) {
-            currentData.totalCoins = (currentData.totalCoins || 0) + score;
+            currentData.totalCoins = (currentData.totalCoins || 0) + score; // Add current game's regular coins
+            currentData.nyanCoins = (currentData.nyanCoins || 0) + nyanScore; // Add current game's NYAN coins
           } else {
             currentData = {
               username: currentUser,
               photo_url: photoUrl,
               totalCoins: score,
+              nyanCoins: nyanScore,
               unlockedSkins: state.unlockedSkins,
               currentSkin: state.currentSkin,
               createdAt: new Date().toISOString()
@@ -997,7 +1061,7 @@
           }
           return currentData;
         });
-        await updateUserInfoDisplay();
+        await updateUserInfoDisplay(); // Refresh user badge with updated total coins
       }
 
       await showLeaderboard();
@@ -1008,20 +1072,31 @@
 
     // Leaderboard functions
     async function showLeaderboard() {
-      tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; 
+      tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">Loading...</td></tr>`; // Adjusted colspan
       const usersRef = ref(db, "users");
       const snapshot = await get(usersRef);
 
       if (!snapshot.exists()) {
-        tbody.innerHTML = `<tr><td colspan="3" style="padding:16px; color:#cfe1ff">No coins collected yet.</td></tr>`; 
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; color:#cfe1ff">No players yet.</td></tr>`; // Adjusted colspan
         entriesMeta.textContent = "0 players";
         return;
       }
 
       const usersList = Object.values(snapshot.val());
       const sortedUsers = usersList
-        .filter(u => u.totalCoins !== undefined)
-        .sort((a, b) => b.totalCoins - a.totalCoins);
+        .filter(u => u.totalCoins !== undefined || u.nyanCoins !== undefined) // Filter users with any coin data
+        .sort((a, b) => {
+            // Sort primarily by totalCoins, then by nyanCoins if totalCoins are equal
+            const totalA = a.totalCoins || 0;
+            const totalB = b.totalCoins || 0;
+            const nyanA = a.nyanCoins || 0;
+            const nyanB = b.nyanCoins || 0;
+
+            if (totalB !== totalA) {
+                return totalB - totalA;
+            }
+            return nyanB - nyanA;
+        });
 
       tbody.innerHTML = "";
       sortedUsers.forEach((u, idx) => {
@@ -1032,7 +1107,8 @@
         tr.innerHTML = `
           <td class="rank">${idx + 1}</td>
           <td>${u.username}</td>
-          <td class="score">${u.totalCoins}</td>
+          <td class="score">${u.totalCoins || 0}</td>
+          <td class="score">${u.nyanCoins || 0}</td>
         `;
         tbody.appendChild(tr);
       });
