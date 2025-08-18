@@ -212,15 +212,15 @@
       position: absolute;
       pointer-events: none;
       display: none;
-      width: 530px; /* Adjusted to Nyan Cat GIF dimensions */
-      height: 210px; /* Adjusted to Nyan Cat GIF dimensions */
+      width: 132px; /* 530 / 4 */
+      height: 52px; /* 210 / 4, rounded */
       z-index: 11;
       transition: transform 0.1s ease-out, opacity 0.1s ease-out; /* For collect animation */
     }
-    #nyanCatGif.collecting {
-        transform: scale(1.2); /* Scale up */
-        opacity: 0; /* Fade out */
+    #nyanCatGif.flipped {
+        transform: scaleX(-1); /* Mirror horizontally */
     }
+    /* Removed .collecting animation as NYAN cat is not "collected" directly */
 
 
     /* Canvas */
@@ -343,8 +343,8 @@
       }
       /* Adjust NYAN Cat GIF for smaller screens if needed */
       #nyanCatGif {
-        width: 265px; /* Half of 530px */
-        height: 105px; /* Half of 210px */
+        width: 132px; /* Keep consistent with desktop for now, or adjust further */
+        height: 52px;
       }
     }
   </style>
@@ -714,6 +714,7 @@
       let coinType = 'normal';
       let coinImage = coinImg;
       let vx = 0; // Horizontal velocity for NYAN coin
+      let isFlipped = false; // For mirroring NYAN cat
 
       if (isNyanCoin) {
         coinType = 'nyan';
@@ -723,33 +724,37 @@
         // Determine starting side and direction for NYAN cat
         if (Math.random() < 0.5) { // Start from left
             vx = 2; // Move right
-            // Start off-screen left, adjust for nyanCatGif's width
+            isFlipped = false; // Nyan cat faces right (default)
+            // Start off-screen left
             coins.push({
                 x: -nyanCatWidth, // Start fully off-screen
                 y: Math.random() * (window.innerHeight / 2), // Spawn higher up
                 w: size, // Collision width
                 h: size, // Collision height
-                vy: 1, // Slower vertical movement
+                vy: 3, // Same vertical speed as normal coins
                 vx: vx,
                 alpha: 1,
                 collected: false,
                 type: coinType,
-                image: coinImage
+                image: coinImage,
+                isFlipped: isFlipped // Store flip state
             });
         } else { // Start from right
             vx = -2; // Move left
-            // Start off-screen right, adjust for nyanCatGif's width
+            isFlipped = true; // Nyan cat faces left (flipped)
+            // Start off-screen right
             coins.push({
                 x: window.innerWidth, // Start fully off-screen
                 y: Math.random() * (window.innerHeight / 2), // Spawn higher up
                 w: size, // Collision width
                 h: size, // Collision height
-                vy: 1, // Slower vertical movement
+                vy: 3, // Same vertical speed as normal coins
                 vx: vx,
                 alpha: 1,
                 collected: false,
                 type: coinType,
-                image: coinImage
+                image: coinImage,
+                isFlipped: isFlipped // Store flip state
             });
         }
         return; // Exit, as NYAN coin is already pushed
@@ -766,7 +771,8 @@
         alpha: 1,
         collected: false,
         type: coinType,
-        image: coinImage
+        image: coinImage,
+        isFlipped: false // Normal coins don't flip
       });
     }
 
@@ -825,20 +831,38 @@
             nyanCatGif.style.left = `${c.x + (c.w / 2) - (nyanCatGif.offsetWidth / 2)}px`;
             nyanCatGif.style.top = `${c.y + (c.h / 2) - (nyanCatGif.offsetHeight / 2)}px`;
             nyanCatGif.style.opacity = 1; // Ensure it's visible
-            nyanCatGif.classList.remove('collecting'); // Remove collecting class if not collecting
+
+            // Apply flip based on direction
+            if (c.isFlipped) {
+                nyanCatGif.classList.add('flipped');
+            } else {
+                nyanCatGif.classList.remove('flipped');
+            }
             nyanCoinActive = true;
         }
       }
-      // If no NYAN coin is active, hide the GIF (unless it's currently animating a collection)
-      if (!nyanCoinActive && !nyanCatGif.classList.contains('collecting')) {
+      // If no NYAN coin is active, hide the GIF
+      if (!nyanCoinActive) {
           nyanCatGif.style.display = 'none';
       }
 
       // Filter out coins that are off-screen or fully faded
-      coins = coins.filter(c =>
-          (c.y < window.innerHeight + c.h + 22 && c.alpha > 0) &&
-          (c.type === 'normal' || (c.type === 'nyan' && c.x > -nyanCatGif.offsetWidth && c.x < window.innerWidth + nyanCatGif.offsetWidth))
-      );
+      // For NYAN coins, if they go off-screen horizontally, increment nyanScore
+      coins = coins.filter(c => {
+          const isOffScreenVertically = c.y >= window.innerHeight + c.h + 22;
+          const isFaded = c.alpha <= 0;
+
+          if (c.type === 'nyan') {
+              const isOffScreenHorizontally = c.x < -nyanCatGif.offsetWidth || c.x > window.innerWidth + nyanCatGif.offsetWidth;
+              if (isOffScreenHorizontally && !c.collected) {
+                  nyanScore++; // Increment NYAN score when it successfully passes by
+                  c.collected = true; // Mark as collected so it's filtered out
+              }
+              return !isOffScreenHorizontally && !isFaded; // Keep NYAN coin until it's off-screen horizontally or faded
+          } else {
+              return !isOffScreenVertically && !isFaded; // Keep normal coin until off-screen vertically or faded
+          }
+      });
 
 
       // Draw rocket.png on canvas
@@ -854,26 +878,16 @@
       // Collision detection
       for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } }
       for (let i = coins.length - 1; i >= 0; i--) {
-        if (!coins[i].collected && hit(rocket, coins[i])) {
-          if (coins[i].type === 'normal') {
-            score++;
-            coinsCollectedSinceLastNyan++; // Increment counter for normal coins
-          } else if (coins[i].type === 'nyan') {
-            nyanScore++; // Increment NYAN coin score
-            // Trigger NYAN Cat GIF collect animation
-            nyanCatGif.classList.add('collecting');
-            setTimeout(() => {
-                nyanCatGif.style.display = 'none';
-                nyanCatGif.classList.remove('collecting');
-                nyanCatGif.style.opacity = 1; // Reset opacity for next time
-                nyanCatGif.style.transform = 'scale(1)'; // Reset scale for next time
-            }, 100); // Animation duration (matches CSS transition)
-          }
+        // Only check collision for normal coins
+        if (coins[i].type === 'normal' && !coins[i].collected && hit(rocket, coins[i])) {
+          score++;
+          coinsCollectedSinceLastNyan++; // Increment counter for normal coins
           coins[i].collected = true;
           const playSound = new Audio('assets/coincollect.mp3');
           playSound.volume = 0.5;
           playSound.play().catch(e => console.error("Error playing sound:", e));
         }
+        // NYAN coins are not "collected" by collision, they just pass by
       }
 
       // Draw HUD
@@ -897,6 +911,11 @@
 
     // Collision detection
     function hit(a, b) {
+      // If the object 'b' is a NYAN coin, it cannot be hit/collected by the player.
+      if (b.type === 'nyan') {
+          return false;
+      }
+
       const aX = a.x + a.collisionOffsetX;
       const aY = a.y + a.collisionOffsetY;
       const aW = a.w - a.collisionWidthShrink;
@@ -960,7 +979,7 @@
       gifElement.src = skinData.gif;
       gifElement.style.display = 'block';
       nyanCatGif.style.display = 'none'; // Ensure NYAN cat is hidden at start of game
-      nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
+      nyanCatGif.classList.remove('flipped'); // Clear any lingering flip classes
       nyanCatGif.style.opacity = 1; // Reset opacity
       nyanCatGif.style.transform = 'scale(1)'; // Reset scale
 
@@ -1149,7 +1168,7 @@
       running = false;
       gifElement.style.display = 'none';
       nyanCatGif.style.display = 'none'; // Hide NYAN cat when game ends
-      nyanCatGif.classList.remove('collecting'); // Clear any lingering animation classes
+      nyanCatGif.classList.remove('flipped'); // Clear any lingering flip classes
       nyanCatGif.style.opacity = 1; // Reset opacity
       nyanCatGif.style.transform = 'scale(1)'; // Reset scale
       pauseBtn.style.display = "none";
