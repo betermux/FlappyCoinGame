@@ -24,12 +24,20 @@
     }
     h1, h2, .btn, th, td.score { font-family: 'Press Start 2P', cursive, monospace; }
 
-    /* Top-left user badge */
+    /* Top-left user badge - Now a container for multiple boxes */
     #userInfo {
       position: fixed;
       top: 12px;
       left: 12px;
       z-index: 20;
+      display: flex;
+      flex-direction: column; /* Arrange boxes vertically */
+      gap: 8px; /* Space between boxes */
+      backdrop-filter: blur(8px);
+    }
+
+    /* Individual user info boxes */
+    .userInfoBox {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -37,11 +45,21 @@
       border-radius: 999px;
       background: linear-gradient(180deg, #0f1430aa, #0c1126aa);
       box-shadow: 0 8px 24px #0006, inset 0 0 0 1px #ffffff08;
-      backdrop-filter: blur(8px);
     }
+
     #userPhoto { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
     #userName { font-weight: 600; color: #fff; font-size: 14px; }
-    #userCoins { font-weight: 600; color: var(--accent2); font-size: 14px; }
+    #userCoins, #userNyanCoins { font-weight: 600; font-size: 14px; } /* Base style for coin text */
+    #userCoins { color: var(--accent2); } /* Regular coin color */
+    #userNyanCoins { color: #ff69b4; } /* Pinkish color for NYAN coins */
+
+    .coin-icon {
+        width: 20px; /* Default size for icons in user info boxes */
+        height: 20px;
+        vertical-align: middle;
+        margin-right: 4px;
+    }
+
 
     /* Screens */
     .screen {
@@ -215,7 +233,6 @@
       width: 132px; /* 530 / 4 */
       height: 52px; /* 210 / 4, rounded */
       z-index: 11;
-      /* Removed transform/opacity transitions for collection, as NYAN cat itself isn't collected */
     }
     #nyanCatGif.flipped {
         transform: scaleX(-1); /* Mirror horizontally */
@@ -349,11 +366,20 @@
   </style>
 </head>
 <body>
-  <!-- User profile badge -->
+  <!-- User profile badge - Redesigned structure -->
   <div id="userInfo" style="display:none;">
-    <img id="userPhoto" alt="User profile photo" />
-    <span id="userName"></span>
-    <span id="userCoins"></span>
+    <div id="userProfileBox" class="userInfoBox">
+      <img id="userPhoto" alt="User profile photo" />
+      <span id="userName"></span>
+    </div>
+    <div id="userCoinsBox" class="userInfoBox">
+      <img src="assets/coin.png" alt="Coins" class="coin-icon" />
+      <span id="userCoins"></span>
+    </div>
+    <div id="userNyanCoinsBox" class="userInfoBox">
+      <img src="assets/nyancoin.png" alt="NYAN Coins" class="coin-icon" />
+      <span id="userNyanCoins"></span>
+    </div>
   </div>
 
   <!-- Home screen -->
@@ -420,8 +446,8 @@
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>Coins</th> <!-- Changed from Coin (Total) -->
-              <th>NYAN Coins</th> <!-- Added NYAN Coins column -->
+              <th>Coins</th>
+              <th>NYAN Coins</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
@@ -523,7 +549,19 @@
     const userNameEl = document.getElementById("userName");
     const userPhotoEl = document.getElementById("userPhoto");
     const userCoinsEl = document.getElementById("userCoins");
+    const userNyanCoinsEl = document.getElementById("userNyanCoins"); // New element for NYAN coins in top-left badge
     const nyanCoinsDisplayEl = document.getElementById("nyanCoinsDisplay"); // New element for NYAN coins in inventory
+
+    // Helper function to format numbers (e.g., 1200 -> 1.2k)
+    function formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        return num;
+    }
 
     function showUserBadge(show) {
       userInfo.style.display = show ? "flex" : "none";
@@ -571,11 +609,13 @@
             createdAt: new Date().toISOString()
           });
         }
-        userCoinsEl.textContent = `🪙 ${userTotalCoins}`;
+        userCoinsEl.textContent = formatNumber(userTotalCoins); // Format for display
+        userNyanCoinsEl.textContent = formatNumber(userNyanCoins); // Format for display
       } else {
         userTotalCoins = 0;
         userNyanCoins = 0; // Reset for guest
         userCoinsEl.textContent = `(Guest)`;
+        userNyanCoinsEl.textContent = `(Guest)`;
       }
 
       document.getElementById('coinsDisplay').textContent = `COINS: ${userTotalCoins}`;
@@ -784,11 +824,11 @@
       rocketGif.style.transform = `rotate(${rocket.rotation}rad)`;
 
       // Spawn objects
-      if (Math.random() < 0.008) spawnObstacle(); // Re-added obstacle spawning
+      if (Math.random() < 0.008) spawnObstacle();
       if (Math.random() < 0.02) spawnCoin();
 
       // Draw and update obstacles
-      for (const o of obstacles) { // Re-added obstacle drawing and updating
+      for (const o of obstacles) {
         o.y += o.vy;
         o.rotation += o.rotationSpeed;
         if (obstacleImg.complete) {
@@ -799,7 +839,7 @@
           ctx.restore();
         }
       }
-      obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40); // Re-added obstacle filtering
+      obstacles = obstacles.filter(o => o.y < window.innerHeight + o.h + 40);
 
 
       // Draw and update coins
@@ -869,7 +909,7 @@
       }
 
       // Collision detection
-      for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } } // Re-added obstacle collision
+      for (const o of obstacles) { if (hit(rocket, o)) { return endGame(); } }
       for (let i = coins.length - 1; i >= 0; i--) {
         if (!coins[i].collected && hit(rocket, coins[i])) {
           if (coins[i].type === 'normal') {
@@ -1001,8 +1041,9 @@
       requestAnimationFrame(loop);
     });
 
-    goHomeFromPause.addEventListener("click", () => {
+    goHomeFromPause.addEventListener("click", async () => { // Made async to await endGame
       running = false;
+      await endGame(); // Save current game score and NYAN coins
       pauseScreen.style.display = "none";
       homeScreen.style.display = "flex";
       boardScreen.style.display = "none";
@@ -1182,7 +1223,7 @@
               photo_url: photoUrl,
               totalCoins: score,
               nyanCoins: nyanScore,
-              unlockedSkins: state.unlockedSkins, // Corrected typo here
+              unlockedSkins: state.unlockedSkins,
               currentSkin: state.currentSkin,
               createdAt: new Date().toISOString()
             };
@@ -1235,8 +1276,8 @@
         tr.innerHTML = `
           <td class="rank">${idx + 1}</td>
           <td>${u.username}</td>
-          <td class="score">${u.totalCoins || 0}</td>
-          <td class="score">${u.nyanCoins || 0}</td>
+          <td class="score">${formatNumber(u.totalCoins || 0)}</td>
+          <td class="score">${formatNumber(u.nyanCoins || 0)}</td>
         `;
         tbody.appendChild(tr);
       });
